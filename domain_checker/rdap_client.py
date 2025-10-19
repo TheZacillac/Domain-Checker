@@ -238,7 +238,17 @@ class RdapClient:
                 
                 # Assign based on role
                 if 'registrar' in roles:
-                    registrar = vcard_data.get('fn') if vcard_data else entity.get('handle')
+                    # Try to get registrar name from various sources
+                    if vcard_data:
+                        registrar = vcard_data.get('name') or vcard_data.get('organization')
+                    if not registrar and 'publicIds' in entity:
+                        # Some registrars have public IDs with the name
+                        for public_id in entity['publicIds']:
+                            if public_id.get('type') == 'IANA Registrar ID':
+                                registrar = f"Registrar ID: {public_id.get('identifier')}"
+                                break
+                    if not registrar:
+                        registrar = entity.get('handle')
                 elif 'registrant' in roles:
                     registrant = vcard_data
                 elif 'administrative' in roles:
@@ -284,6 +294,7 @@ class RdapClient:
             
             if field_name == 'fn':  # Full name
                 result['name'] = value
+                result['fn'] = value  # Also store as 'fn' for compatibility
             elif field_name == 'org':  # Organization
                 result['organization'] = value
             elif field_name == 'email':
