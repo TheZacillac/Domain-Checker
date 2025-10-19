@@ -92,6 +92,16 @@ def display_domain_info(result: LookupResult):
     
     console.print(Panel(info_text, title="[bold green]Domain Information[/bold green]", border_style="green"))
     
+    # For DIG lookups, show authoritative name servers if available
+    if is_dig and domain_info.name_servers:
+        ns_text = "\n".join([f"[cyan]•[/cyan] [yellow]{ns}[/yellow]" for ns in domain_info.name_servers])
+        console.print(Panel(
+            ns_text,
+            title="[bold blue]Authoritative Name Servers[/bold blue]",
+            border_style="blue",
+            padding=(1, 2)
+        ))
+    
     # Skip dates, contacts for DIG lookups - only show for WHOIS/RDAP
     if not is_dig:
         # Create dates table
@@ -130,15 +140,6 @@ def display_domain_info(result: LookupResult):
         
         console.print(ns_table)
     
-    # Also show name servers for DIG NS queries in a table
-    if is_dig and domain_info.name_servers:
-        ns_table = Table(title="[bold]Name Servers[/bold]", box=box.ROUNDED)
-        ns_table.add_column("Server", style="cyan")
-        
-        for ns in domain_info.name_servers:
-            ns_table.add_row(ns)
-        
-        console.print(ns_table)
     
     # Skip contacts table for DIG lookups
     if not is_dig:

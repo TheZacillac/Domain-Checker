@@ -19,6 +19,8 @@ from mcp.types import (
 
 from .core import DomainChecker
 from .models import LookupResult, BulkLookupResult
+from .dig_client import DigClient
+from .propagation_checker import DNSPropagationChecker
 
 
 class DomainCheckerMCPServer:
@@ -27,6 +29,8 @@ class DomainCheckerMCPServer:
     def __init__(self):
         self.server = Server("domain-checker")
         self.checker = DomainChecker()
+        self.dig_client = DigClient()
+        self.propagation_checker = DNSPropagationChecker()
         self._setup_handlers()
     
     def _setup_handlers(self):
@@ -150,6 +154,75 @@ class DomainCheckerMCPServer:
                         },
                         "required": ["file_path"]
                     }
+                ),
+                Tool(
+                    name="dig_lookup",
+                    description="Perform DNS lookup using DIG command",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "domain": {
+                                "type": "string",
+                                "description": "Domain name to lookup"
+                            },
+                            "record_type": {
+                                "type": "string",
+                                "enum": ["A", "AAAA", "MX", "NS", "SOA", "TXT", "ANY"],
+                                "description": "DNS record type (default: A)",
+                                "default": "A"
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "description": "Timeout in seconds (default: 30)",
+                                "default": 30
+                            }
+                        },
+                        "required": ["domain"]
+                    }
+                ),
+                Tool(
+                    name="reverse_dns_lookup",
+                    description="Perform reverse DNS lookup for an IP address",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "ip_address": {
+                                "type": "string",
+                                "description": "IP address to lookup"
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "description": "Timeout in seconds (default: 30)",
+                                "default": 30
+                            }
+                        },
+                        "required": ["ip_address"]
+                    }
+                ),
+                Tool(
+                    name="check_dns_propagation",
+                    description="Check DNS propagation across regional resolvers",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "domain": {
+                                "type": "string",
+                                "description": "Domain name to check"
+                            },
+                            "record_type": {
+                                "type": "string",
+                                "enum": ["A", "AAAA", "MX", "NS", "SOA", "TXT"],
+                                "description": "DNS record type (default: A)",
+                                "default": "A"
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "description": "Timeout in seconds (default: 30)",
+                                "default": 30
+                            }
+                        },
+                        "required": ["domain"]
+                    }
                 )
             ]
         
@@ -165,6 +238,12 @@ class DomainCheckerMCPServer:
                 return await self._handle_compare_methods(arguments)
             elif name == "lookup_domains_from_file":
                 return await self._handle_lookup_domains_from_file(arguments)
+            elif name == "dig_lookup":
+                return await self._handle_dig_lookup(arguments)
+            elif name == "reverse_dns_lookup":
+                return await self._handle_reverse_dns_lookup(arguments)
+            elif name == "check_dns_propagation":
+                return await self._handle_check_dns_propagation(arguments)
             else:
                 return [TextContent(
                     type="text",
@@ -427,6 +506,126 @@ class DomainCheckerMCPServer:
                 text=f"Error: {str(e)}"
             )]
     
+    async def _handle_dig_lookup(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle DIG lookup"""
+        domain = arguments.get("domain")
+        record_type = arguments.get("record_type", "A")
+        timeout = arguments.get("timeout", 30)
+        
+        if not domain:
+            return [TextContent(
+                type="text",
+                text="Error: domain parameter is required"
+            )]
+        
+        try:
+            dig_client = DigClient(timeout=timeout)
+            result = await dig_client.lookup(domain, record_type)
+            
+            # Format result as JSON
+            result_data = {
+                "domain": result.domain,
+                "source": result.source,
+                "name_servers": result.name_servers,
+                "raw_data": result.raw_data
+            }
+            
+            return [TextContent(
+                type="text",
+                text=json.dumps(result_data, indent=2, default=str)
+            )]
+            
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=f"Error: {str(e)}"
+            )]
+    
+    async def _handle_reverse_dns_lookup(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle reverse DNS lookup"""
+        ip_address = arguments.get("ip_address")
+        timeout = arguments.get("timeout", 30)
+        
+        if not ip_address:
+            return [TextContent(
+                type="text",
+                text="Error: ip_address parameter is required"
+            )]
+        
+        try:
+            dig_client = DigClient(timeout=timeout)
+            result = await dig_client.reverse_lookup(ip_address)
+            
+            # Format result as JSON
+            result_data = {
+                "ip_address": ip_address,
+                "source": result.source,
+                "name_servers": result.name_servers,
+                "raw_data": result.raw_data
+            }
+            
+            return [TextContent(
+                type="text",
+                text=json.dumps(result_data, indent=2, default=str)
+            )]
+            
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=f"Error: {str(e)}"
+            )]
+    
+    async def _handle_check_dns_propagation(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle DNS propagation check"""
+        domain = arguments.get("domain")
+        record_type = arguments.get("record_type", "A")
+        timeout = arguments.get("timeout", 30)
+        
+        if not domain:
+            return [TextContent(
+                type="text",
+                text="Error: domain parameter is required"
+            )]
+        
+        try:
+            propagation_checker = DNSPropagationChecker(timeout=timeout)
+            result = await propagation_checker.check_propagation(domain, record_type)
+            
+            # Format result as JSON
+            result_data = {
+                "domain": result.domain,
+                "record_type": result.record_type,
+                "total_resolvers": result.total_resolvers,
+                "successful_queries": result.successful,
+                "failed_queries": result.failed,
+                "unique_ips": list(result.unique_ips),
+                "propagation_percentage": result.propagation_percentage,
+                "is_fully_propagated": result.fully_propagated,
+                "total_time": result.total_time,
+                "results": [
+                    {
+                        "resolver": r.resolver_name,
+                        "resolver_ip": r.resolver_ip,
+                        "location": r.location,
+                        "success": r.success,
+                        "resolved_ips": r.resolved_ips,
+                        "response_time": r.lookup_time,
+                        "error": r.error
+                    } for r in result.results
+                ]
+            }
+            
+            return [TextContent(
+                type="text",
+                text=json.dumps(result_data, indent=2, default=str)
+            )]
+            
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=f"Error: {str(e)}"
+            )]
+    
     async def run(self):
         """Run the MCP server"""
         async with stdio_server() as (read_stream, write_stream):
@@ -435,7 +634,7 @@ class DomainCheckerMCPServer:
                 write_stream,
                 InitializationOptions(
                     server_name="domain-checker",
-                    server_version="1.0.0",
+                    server_version="1.0.3",
                     capabilities=self.server.get_capabilities(
                         notification_options=None,
                         experimental_capabilities=None

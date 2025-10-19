@@ -35,7 +35,18 @@ class DigClient:
                 None, self._sync_dig_lookup, domain, record_type
             )
             
-            return self._parse_dig_data(domain, dig_output, record_type)
+            # Also get authoritative name servers (unless we're already querying NS)
+            auth_nameservers = []
+            if record_type.upper() != "NS":
+                try:
+                    ns_output = await loop.run_in_executor(
+                        None, self._sync_dig_lookup, domain, "NS"
+                    )
+                    auth_nameservers = self._parse_ns_records(ns_output)
+                except:
+                    pass  # If NS lookup fails, continue without auth nameservers
+            
+            return self._parse_dig_data(domain, dig_output, record_type, auth_nameservers)
             
         except Exception as e:
             return DomainInfo(
@@ -73,7 +84,24 @@ class DigClient:
         except Exception as e:
             raise DigError(domain, f"DIG lookup failed: {str(e)}")
     
-    def _parse_dig_data(self, domain: str, dig_output: str, record_type: str) -> DomainInfo:
+    def _parse_ns_records(self, ns_output: str) -> List[str]:
+        """Parse NS records from DIG output"""
+        if not ns_output.strip():
+            return []
+        
+        # Extract NS records from the output
+        ns_records = []
+        for line in ns_output.strip().split('\n'):
+            line = line.strip()
+            if line and not line.startswith(';'):
+                # Remove trailing dot if present
+                ns_record = line.rstrip('.')
+                if ns_record:
+                    ns_records.append(ns_record)
+        
+        return ns_records
+    
+    def _parse_dig_data(self, domain: str, dig_output: str, record_type: str, auth_nameservers: List[str] = None) -> DomainInfo:
         """Parse DIG output into DomainInfo object"""
         if not dig_output.strip():
             return DomainInfo(
@@ -85,9 +113,11 @@ class DigClient:
         # Parse different record types
         records = self._parse_records(dig_output, record_type)
         
-        # Extract name servers
+        # Extract name servers (use auth_nameservers if provided, otherwise parse from records)
         name_servers = []
-        if record_type.upper() in ["NS", "ANY"]:
+        if auth_nameservers:
+            name_servers = auth_nameservers
+        elif record_type.upper() in ["NS", "ANY"]:
             name_servers = [record.get("value", "") for record in records if record.get("type") == "NS"]
         
         # Extract MX records
