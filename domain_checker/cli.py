@@ -105,8 +105,33 @@ def display_domain_info(result: LookupResult):
         
         console.print(dates_table)
     
-    # Create name servers table (show for all methods if available)
-    if domain_info.name_servers:
+    # For DIG lookups, show resolved addresses/records in a dedicated box
+    if is_dig and domain_info.raw_data:
+        # Parse the raw data to extract resolved records
+        records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+        
+        if records:
+            # Create a panel for resolved records
+            records_text = "\n".join([f"[cyan]•[/cyan] [yellow]{record}[/yellow]" for record in records])
+            console.print(Panel(
+                records_text,
+                title="[bold green]Resolved Records[/bold green]",
+                border_style="green",
+                padding=(1, 2)
+            ))
+    
+    # Create name servers table (show for non-DIG methods if available)
+    if not is_dig and domain_info.name_servers:
+        ns_table = Table(title="[bold]Name Servers[/bold]", box=box.ROUNDED)
+        ns_table.add_column("Server", style="cyan")
+        
+        for ns in domain_info.name_servers:
+            ns_table.add_row(ns)
+        
+        console.print(ns_table)
+    
+    # Also show name servers for DIG NS queries in a table
+    if is_dig and domain_info.name_servers:
         ns_table = Table(title="[bold]Name Servers[/bold]", box=box.ROUNDED)
         ns_table.add_column("Server", style="cyan")
         
@@ -143,8 +168,8 @@ def display_domain_info(result: LookupResult):
         
         console.print(contacts_table)
     
-    # Show raw data if requested
-    if domain_info.raw_data and len(domain_info.raw_data) < 1000:
+    # Show raw data if requested (skip for DIG as we already showed it nicely above)
+    if not is_dig and domain_info.raw_data and len(domain_info.raw_data) < 1000:
         console.print("\n[bold]Raw Data:[/bold]")
         syntax = Syntax(domain_info.raw_data, "text", theme="monokai", line_numbers=True)
         console.print(Panel(syntax, title="Raw Data", border_style="blue"))

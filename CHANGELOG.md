@@ -5,6 +5,24 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-10-19
+
+### Added
+- Dedicated "Resolved Records" box for DIG lookups
+- Clean, formatted panel display for DNS query results
+- Bullet-pointed records with color coding (cyan bullets, yellow text)
+
+### Changed
+- DIG display now shows resolved records in a dedicated green-bordered panel
+- Removed "Raw Data" section from DIG output to avoid duplication
+- Improved visual hierarchy: Domain Info → Resolved Records → Name Servers (if NS query)
+- Simplified DIG info panel to show only Domain, Method, and Lookup Time
+
+### Improved
+- Better readability for DNS lookups
+- Professional formatting for all DIG record types (A, AAAA, MX, NS, TXT, etc.)
+- Consistent visual design across all lookup methods
+
 ## [1.0.2] - 2025-10-19
 
 ### Added
@@ -74,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API documentation
 - Configuration guide
 
+[1.0.3]: https://github.com/yourusername/domain-checker/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/yourusername/domain-checker/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/yourusername/domain-checker/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/yourusername/domain-checker/releases/tag/v1.0.0
