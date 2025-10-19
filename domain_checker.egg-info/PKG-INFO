@@ -1,11 +1,12 @@
 Metadata-Version: 2.4
 Name: domain-checker
-Version: 1.0.0
+Version: 1.0.1
 Summary: Asynchronous domain checker with WHOIS and RDAP support
 Author-email: Domain Checker <domain@example.com>
 License: MIT
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: aiohttp>=3.8.0
 Requires-Dist: python-whois>=0.7.3
 Requires-Dist: rich>=13.0.0
@@ -14,6 +15,7 @@ Requires-Dist: pydantic>=2.0.0
 Requires-Dist: typer>=0.9.0
 Requires-Dist: mcp>=1.0.0
 Requires-Dist: asyncio-throttle>=1.0.0
+Dynamic: license-file
 
 # Domain Checker
 
@@ -24,6 +26,7 @@ An asynchronous domain checker with WHOIS and RDAP support, featuring a beautifu
 - **Asynchronous Processing**: Fast, non-blocking domain lookups
 - **Triple Protocol Support**: WHOIS, RDAP, and DIG lookups
 - **DNS Record Types**: Support for A, AAAA, MX, NS, SOA, TXT, and ANY records
+- **DNS Propagation Checker**: Check DNS resolution across 20 regional ISP resolvers
 - **Reverse DNS**: IP address to hostname lookups
 - **Bulk Processing**: Check multiple domains with rate limiting
 - **Beautiful CLI**: Rich, colorful terminal interface
@@ -63,6 +66,9 @@ domain-check dig example.com --record NS
 
 # Reverse DNS lookup
 domain-check reverse 8.8.8.8
+
+# Check DNS propagation across regional ISPs
+domain-check propagation example.com --record A
 
 # Bulk lookup with DIG
 domain-check bulk example.com google.com --method dig --dig-record A
