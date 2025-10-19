@@ -39,14 +39,28 @@ def format_contact(contact: Optional[dict]) -> str:
         return "[dim]N/A[/dim]"
     
     parts = []
-    if contact.get('name'):
-        parts.append(contact['name'])
-    if contact.get('organization'):
-        parts.append(f"({contact['organization']})")
-    if contact.get('email'):
-        parts.append(f"📧 {contact['email']}")
     
-    return " ".join(parts) if parts else "[dim]N/A[/dim]"
+    # Name
+    if contact.get('name') or contact.get('fn'):
+        parts.append(f"[bold]{contact.get('name') or contact.get('fn')}[/bold]")
+    
+    # Organization
+    if contact.get('organization'):
+        parts.append(f"[cyan]{contact['organization']}[/cyan]")
+    
+    # Email
+    if contact.get('email'):
+        parts.append(f"📧 [blue]{contact['email']}[/blue]")
+    
+    # Phone
+    if contact.get('phone'):
+        parts.append(f"📞 [green]{contact['phone']}[/green]")
+    
+    # Address
+    if contact.get('address'):
+        parts.append(f"📍 [yellow]{contact['address']}[/yellow]")
+    
+    return "\n".join(parts) if parts else "[dim]N/A[/dim]"
 
 
 def display_domain_info(result: LookupResult):
@@ -92,13 +106,28 @@ def display_domain_info(result: LookupResult):
         console.print(ns_table)
     
     # Create contacts table
-    contacts_table = Table(title="[bold]Contact Information[/bold]", box=box.ROUNDED)
-    contacts_table.add_column("Type", style="cyan")
-    contacts_table.add_column("Details", style="yellow")
+    contacts_table = Table(title="[bold]Contact Information[/bold]", box=box.ROUNDED, show_lines=True)
+    contacts_table.add_column("Type", style="cyan", vertical="top")
+    contacts_table.add_column("Details", style="yellow", vertical="top")
     
-    contacts_table.add_row("Registrant", format_contact(domain_info.registrant))
-    contacts_table.add_row("Admin", format_contact(domain_info.admin_contact))
-    contacts_table.add_row("Technical", format_contact(domain_info.tech_contact))
+    # Check if we have any contact information
+    has_contacts = (
+        domain_info.registrant or 
+        domain_info.admin_contact or 
+        domain_info.tech_contact
+    )
+    
+    if has_contacts:
+        if domain_info.registrant:
+            contacts_table.add_row("Registrant", format_contact(domain_info.registrant))
+        if domain_info.admin_contact:
+            contacts_table.add_row("Admin", format_contact(domain_info.admin_contact))
+        if domain_info.tech_contact:
+            contacts_table.add_row("Technical", format_contact(domain_info.tech_contact))
+    else:
+        contacts_table.add_row("Registrant", "[dim]N/A[/dim]")
+        contacts_table.add_row("Admin", "[dim]N/A[/dim]")
+        contacts_table.add_row("Technical", "[dim]N/A[/dim]")
     
     console.print(contacts_table)
     

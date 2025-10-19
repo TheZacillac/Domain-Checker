@@ -5,6 +5,24 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-10-19
+
+### Added
+- Full contact information display (name, organization, email, phone, address)
+- Multi-line contact formatting with icons (📧 📞 📍)
+- Enhanced contact table with row separation
+- Test script for demonstrating full contact display (`test_contact_display.py`)
+- Comprehensive documentation (`CONTACT_INFORMATION.md`)
+
+### Changed
+- Improved `format_contact()` function to show all available fields
+- Updated contact table layout with `show_lines=True` for better readability
+- Enhanced vCard parsing to store both `'fn'` and `'name'` fields
+
+### Documentation
+- Added CONTACT_INFORMATION.md explaining display features and privacy considerations
+- Updated documentation about GDPR compliance and why contact info is often hidden
+
 ## [1.0.1] - 2025-10-19
 
 ### Added
@@ -56,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API documentation
 - Configuration guide
 
+[1.0.2]: https://github.com/yourusername/domain-checker/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/yourusername/domain-checker/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/yourusername/domain-checker/releases/tag/v1.0.0
 

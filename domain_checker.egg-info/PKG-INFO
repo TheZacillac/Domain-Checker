@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: domain-checker
-Version: 1.0.1
+Version: 1.0.2
 Summary: Asynchronous domain checker with WHOIS and RDAP support
 Author-email: Domain Checker <domain@example.com>
 License: MIT
