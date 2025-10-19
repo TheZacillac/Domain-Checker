@@ -72,9 +72,17 @@ def display_domain_info(result: LookupResult):
         return
     
     domain_info = result.data
+    is_dig = result.method.lower() == 'dig'
     
-    # Create main info panel
-    info_text = f"""
+    # Create main info panel - simplified for DIG lookups
+    if is_dig:
+        info_text = f"""
+[bold blue]Domain:[/bold blue] {domain_info.domain}
+[bold blue]Method:[/bold blue] {result.method.upper()}
+[bold blue]Lookup Time:[/bold blue] {result.lookup_time:.2f}s
+"""
+    else:
+        info_text = f"""
 [bold blue]Domain:[/bold blue] {domain_info.domain}
 [bold blue]Method:[/bold blue] {result.method.upper()}
 [bold blue]Lookup Time:[/bold blue] {result.lookup_time:.2f}s
@@ -84,18 +92,20 @@ def display_domain_info(result: LookupResult):
     
     console.print(Panel(info_text, title="[bold green]Domain Information[/bold green]", border_style="green"))
     
-    # Create dates table
-    dates_table = Table(title="[bold]Important Dates[/bold]", box=box.ROUNDED)
-    dates_table.add_column("Event", style="cyan")
-    dates_table.add_column("Date", style="yellow")
+    # Skip dates, contacts for DIG lookups - only show for WHOIS/RDAP
+    if not is_dig:
+        # Create dates table
+        dates_table = Table(title="[bold]Important Dates[/bold]", box=box.ROUNDED)
+        dates_table.add_column("Event", style="cyan")
+        dates_table.add_column("Date", style="yellow")
+        
+        dates_table.add_row("Creation", format_date(domain_info.creation_date))
+        dates_table.add_row("Expiration", format_date(domain_info.expiration_date))
+        dates_table.add_row("Last Updated", format_date(domain_info.updated_date))
+        
+        console.print(dates_table)
     
-    dates_table.add_row("Creation", format_date(domain_info.creation_date))
-    dates_table.add_row("Expiration", format_date(domain_info.expiration_date))
-    dates_table.add_row("Last Updated", format_date(domain_info.updated_date))
-    
-    console.print(dates_table)
-    
-    # Create name servers table
+    # Create name servers table (show for all methods if available)
     if domain_info.name_servers:
         ns_table = Table(title="[bold]Name Servers[/bold]", box=box.ROUNDED)
         ns_table.add_column("Server", style="cyan")
@@ -105,31 +115,33 @@ def display_domain_info(result: LookupResult):
         
         console.print(ns_table)
     
-    # Create contacts table
-    contacts_table = Table(title="[bold]Contact Information[/bold]", box=box.ROUNDED, show_lines=True)
-    contacts_table.add_column("Type", style="cyan", vertical="top")
-    contacts_table.add_column("Details", style="yellow", vertical="top")
-    
-    # Check if we have any contact information
-    has_contacts = (
-        domain_info.registrant or 
-        domain_info.admin_contact or 
-        domain_info.tech_contact
-    )
-    
-    if has_contacts:
-        if domain_info.registrant:
-            contacts_table.add_row("Registrant", format_contact(domain_info.registrant))
-        if domain_info.admin_contact:
-            contacts_table.add_row("Admin", format_contact(domain_info.admin_contact))
-        if domain_info.tech_contact:
-            contacts_table.add_row("Technical", format_contact(domain_info.tech_contact))
-    else:
-        contacts_table.add_row("Registrant", "[dim]N/A[/dim]")
-        contacts_table.add_row("Admin", "[dim]N/A[/dim]")
-        contacts_table.add_row("Technical", "[dim]N/A[/dim]")
-    
-    console.print(contacts_table)
+    # Skip contacts table for DIG lookups
+    if not is_dig:
+        # Create contacts table
+        contacts_table = Table(title="[bold]Contact Information[/bold]", box=box.ROUNDED, show_lines=True)
+        contacts_table.add_column("Type", style="cyan", vertical="top")
+        contacts_table.add_column("Details", style="yellow", vertical="top")
+        
+        # Check if we have any contact information
+        has_contacts = (
+            domain_info.registrant or 
+            domain_info.admin_contact or 
+            domain_info.tech_contact
+        )
+        
+        if has_contacts:
+            if domain_info.registrant:
+                contacts_table.add_row("Registrant", format_contact(domain_info.registrant))
+            if domain_info.admin_contact:
+                contacts_table.add_row("Admin", format_contact(domain_info.admin_contact))
+            if domain_info.tech_contact:
+                contacts_table.add_row("Technical", format_contact(domain_info.tech_contact))
+        else:
+            contacts_table.add_row("Registrant", "[dim]N/A[/dim]")
+            contacts_table.add_row("Admin", "[dim]N/A[/dim]")
+            contacts_table.add_row("Technical", "[dim]N/A[/dim]")
+        
+        console.print(contacts_table)
     
     # Show raw data if requested
     if domain_info.raw_data and len(domain_info.raw_data) < 1000:
