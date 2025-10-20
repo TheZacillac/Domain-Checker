@@ -6,6 +6,9 @@ import asyncio
 import typer
 from typing import List, Optional
 from pathlib import Path
+import json
+import csv
+from io import StringIO
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -25,6 +28,237 @@ app = typer.Typer(
     add_completion=False
 )
 console = Console()
+
+
+def format_date_plain(date: Optional[datetime]) -> str:
+    """Format datetime for plain text display"""
+    if not date:
+        return "N/A"
+    return date.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_contact_plain(contact: Optional[dict]) -> str:
+    """Format contact information for plain text display"""
+    if not contact:
+        return "N/A"
+    
+    parts = []
+    
+    # Name
+    if contact.get('name') or contact.get('fn'):
+        parts.append(f"Name: {contact.get('name') or contact.get('fn')}")
+    
+    # Organization
+    if contact.get('organization'):
+        parts.append(f"Organization: {contact['organization']}")
+    
+    # Email
+    if contact.get('email'):
+        parts.append(f"Email: {contact['email']}")
+    
+    # Phone
+    if contact.get('phone'):
+        parts.append(f"Phone: {contact['phone']}")
+    
+    # Address
+    if contact.get('address'):
+        parts.append(f"Address: {contact['address']}")
+    
+    return ", ".join(parts) if parts else "N/A"
+
+
+def display_domain_info_plain(result: LookupResult):
+    """Display domain information in plain text format"""
+    if not result.success or not result.data:
+        print(f"Failed to lookup {result.domain}")
+        if result.error:
+            print(f"Error: {result.error}")
+        return
+    
+    domain_info = result.data
+    is_dig = result.method.lower() == 'dig'
+    
+    print("=" * 60)
+    print("DOMAIN INFORMATION")
+    print("=" * 60)
+    print(f"Domain: {domain_info.domain}")
+    print(f"Method: {result.method.upper()}")
+    print(f"Lookup Time: {result.lookup_time:.2f}s")
+    
+    if not is_dig:
+        print(f"Registrar: {domain_info.registrar or 'N/A'}")
+        print(f"Status: {', '.join(domain_info.status) if domain_info.status else 'N/A'}")
+    
+    # Name servers
+    if domain_info.name_servers:
+        print("\nNAME SERVERS:")
+        for ns in domain_info.name_servers:
+            print(f"  {ns}")
+    
+    # For DIG lookups, show resolved records
+    if is_dig and domain_info.raw_data:
+        records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+        if records:
+            print("\nRESOLVED RECORDS:")
+            for record in records:
+                print(f"  {record}")
+    
+    # Dates (skip for DIG)
+    if not is_dig:
+        print("\nIMPORTANT DATES:")
+        print(f"  Creation: {format_date_plain(domain_info.creation_date)}")
+        print(f"  Expiration: {format_date_plain(domain_info.expiration_date)}")
+        print(f"  Last Updated: {format_date_plain(domain_info.updated_date)}")
+    
+    # Contacts (skip for DIG)
+    if not is_dig:
+        has_contacts = (
+            domain_info.registrant or 
+            domain_info.admin_contact or 
+            domain_info.tech_contact
+        )
+        
+        if has_contacts:
+            print("\nCONTACT INFORMATION:")
+            if domain_info.registrant:
+                print(f"  Registrant: {format_contact_plain(domain_info.registrant)}")
+            if domain_info.admin_contact:
+                print(f"  Admin: {format_contact_plain(domain_info.admin_contact)}")
+            if domain_info.tech_contact:
+                print(f"  Technical: {format_contact_plain(domain_info.tech_contact)}")
+    
+    print("=" * 60)
+
+
+def display_domain_info_json(result: LookupResult):
+    """Display domain information in JSON format"""
+    data = {
+        "domain": result.domain,
+        "success": result.success,
+        "method": result.method,
+        "lookup_time": result.lookup_time,
+        "registration_status": result.registration_status,
+        "error": result.error
+    }
+    
+    if result.data:
+        data["data"] = {
+            "domain": result.data.domain,
+            "registrar": result.data.registrar,
+            "creation_date": result.data.creation_date.isoformat() if result.data.creation_date else None,
+            "expiration_date": result.data.expiration_date.isoformat() if result.data.expiration_date else None,
+            "updated_date": result.data.updated_date.isoformat() if result.data.updated_date else None,
+            "status": result.data.status,
+            "name_servers": result.data.name_servers,
+            "registrant": result.data.registrant,
+            "admin_contact": result.data.admin_contact,
+            "tech_contact": result.data.tech_contact,
+            "source": result.data.source,
+            "raw_data": result.data.raw_data
+        }
+    
+    print(json.dumps(data, indent=2))
+
+
+def display_bulk_results_plain(results: BulkLookupResult):
+    """Display bulk results in plain text format"""
+    registered_count = sum(1 for r in results.results if r.registration_status == "registered")
+    not_registered_count = sum(1 for r in results.results if r.registration_status == "not_registered")
+    possibly_registered_count = sum(1 for r in results.results if r.registration_status == "possibly_registered")
+    
+    print("=" * 80)
+    print("BULK LOOKUP SUMMARY")
+    print("=" * 80)
+    print(f"Total Domains: {results.total_domains}")
+    print(f"Registered: {registered_count}")
+    print(f"Not Registered: {not_registered_count}")
+    print(f"Possibly Registered: {possibly_registered_count}")
+    print(f"Total Time: {results.total_time:.2f}s")
+    print(f"Average per Domain: {results.average_time_per_domain:.2f}s")
+    print("=" * 80)
+    print(f"\n{'Domain':<30} {'Status':<20} {'Method':<10} {'Time':<10} {'Registrar':<30}")
+    print("-" * 100)
+    
+    for result in results.results:
+        if result.registration_status == "registered":
+            status = "Registered"
+        elif result.registration_status == "not_registered":
+            status = "Not Registered"
+        elif result.registration_status == "possibly_registered":
+            status = "Possibly Registered"
+        else:
+            status = "Success" if result.success else "Failed"
+        
+        method = result.method.upper() if result.method else "N/A"
+        time_str = f"{result.lookup_time:.2f}s"
+        registrar = result.data.registrar if result.data and result.data.registrar else "N/A"
+        
+        print(f"{result.domain:<30} {status:<20} {method:<10} {time_str:<10} {registrar:<30}")
+
+
+def display_bulk_results_json(results: BulkLookupResult):
+    """Display bulk results in JSON format"""
+    data = {
+        "total_domains": results.total_domains,
+        "successful_lookups": results.successful_lookups,
+        "failed_lookups": results.failed_lookups,
+        "total_time": results.total_time,
+        "average_time_per_domain": results.average_time_per_domain,
+        "results": []
+    }
+    
+    for result in results.results:
+        result_data = {
+            "domain": result.domain,
+            "success": result.success,
+            "method": result.method,
+            "lookup_time": result.lookup_time,
+            "registration_status": result.registration_status,
+            "error": result.error
+        }
+        
+        if result.data:
+            result_data["data"] = {
+                "domain": result.data.domain,
+                "registrar": result.data.registrar,
+                "creation_date": result.data.creation_date.isoformat() if result.data.creation_date else None,
+                "expiration_date": result.data.expiration_date.isoformat() if result.data.expiration_date else None,
+                "updated_date": result.data.updated_date.isoformat() if result.data.updated_date else None,
+                "status": result.data.status,
+                "name_servers": result.data.name_servers,
+                "source": result.data.source
+            }
+        
+        data["results"].append(result_data)
+    
+    print(json.dumps(data, indent=2))
+
+
+def display_bulk_results_csv(results: BulkLookupResult):
+    """Display bulk results in CSV format"""
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        "Domain", "Registration Status", "Method", "Lookup Time (s)", 
+        "Registrar", "Creation Date", "Expiration Date", "Status"
+    ])
+    
+    # Write data rows
+    for result in results.results:
+        writer.writerow([
+            result.domain,
+            result.registration_status or ("success" if result.success else "failed"),
+            result.method.upper() if result.method else "N/A",
+            f"{result.lookup_time:.2f}",
+            result.data.registrar if result.data and result.data.registrar else "N/A",
+            result.data.creation_date.strftime("%Y-%m-%d") if result.data and result.data.creation_date else "N/A",
+            result.data.expiration_date.strftime("%Y-%m-%d") if result.data and result.data.expiration_date else "N/A",
+            ", ".join(result.data.status) if result.data and result.data.status else "N/A"
+        ])
+    
+    print(output.getvalue())
 
 
 def format_date(date: Optional[datetime]) -> str:
@@ -238,12 +472,19 @@ def lookup(
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
     show_raw: bool = typer.Option(False, "--raw", "-r", help="Show raw data"),
     dig_record_type: str = typer.Option("ANY", "--dig-record", "-d", help="DNS record type for DIG lookups: A, AAAA, MX, NS, SOA, TXT, ANY"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Lookup a single domain"""
     async def _lookup():
         checker = DomainChecker(timeout=timeout)
         result = await checker.lookup_domain(domain, method, dig_record_type)
-        display_domain_info(result)
+        
+        if output_format == "plain":
+            display_domain_info_plain(result)
+        elif output_format == "json":
+            display_domain_info_json(result)
+        else:  # rich
+            display_domain_info(result)
     
     asyncio.run(_lookup())
 
@@ -256,6 +497,7 @@ def bulk(
     max_concurrent: int = typer.Option(10, "--concurrent", "-c", help="Maximum concurrent lookups"),
     rate_limit: float = typer.Option(1.0, "--rate-limit", "-r", help="Rate limit (requests per second)"),
     dig_record_type: str = typer.Option("ANY", "--dig-record", "-d", help="DNS record type for DIG lookups: A, AAAA, MX, NS, SOA, TXT, ANY"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, json, or csv"),
 ):
     """Lookup multiple domains"""
     async def _bulk():
@@ -265,19 +507,30 @@ def bulk(
             rate_limit=rate_limit
         )
         
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console
-        ) as progress:
-            task = progress.add_task("Looking up domains...", total=len(domains))
-            
+        # Only show progress bar for rich output
+        if output_format == "rich":
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Looking up domains...", total=len(domains))
+                
+                results = await checker.lookup_domains_bulk(domains, method, dig_record_type)
+                progress.update(task, completed=len(domains))
+        else:
             results = await checker.lookup_domains_bulk(domains, method, dig_record_type)
-            progress.update(task, completed=len(domains))
         
-        display_bulk_results(results)
+        if output_format == "plain":
+            display_bulk_results_plain(results)
+        elif output_format == "json":
+            display_bulk_results_json(results)
+        elif output_format == "csv":
+            display_bulk_results_csv(results)
+        else:  # rich
+            display_bulk_results(results)
     
     asyncio.run(_bulk())
 
@@ -290,6 +543,7 @@ def file(
     max_concurrent: int = typer.Option(10, "--concurrent", "-c", help="Maximum concurrent lookups"),
     rate_limit: float = typer.Option(1.0, "--rate-limit", "-r", help="Rate limit (requests per second)"),
     dig_record_type: str = typer.Option("ANY", "--dig-record", "-d", help="DNS record type for DIG lookups: A, AAAA, MX, NS, SOA, TXT, ANY"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, json, or csv"),
 ):
     """Lookup domains from a file"""
     async def _file():
@@ -299,19 +553,30 @@ def file(
             rate_limit=rate_limit
         )
         
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console
-        ) as progress:
-            task = progress.add_task("Reading file and looking up domains...", total=None)
-            
+        # Only show progress bar for rich output
+        if output_format == "rich":
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Reading file and looking up domains...", total=None)
+                
+                results = await checker.lookup_domains_from_file(file_path, method, dig_record_type)
+                progress.update(task, completed=100)
+        else:
             results = await checker.lookup_domains_from_file(file_path, method, dig_record_type)
-            progress.update(task, completed=100)
         
-        display_bulk_results(results)
+        if output_format == "plain":
+            display_bulk_results_plain(results)
+        elif output_format == "json":
+            display_bulk_results_json(results)
+        elif output_format == "csv":
+            display_bulk_results_csv(results)
+        else:  # rich
+            display_bulk_results(results)
     
     asyncio.run(_file())
 
@@ -321,12 +586,19 @@ def dig(
     domain: str = typer.Argument(..., help="Domain name to lookup"),
     record_type: str = typer.Option("ANY", "--record", "-r", help="DNS record type: A, AAAA, MX, NS, SOA, TXT, ANY"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Perform DIG lookup for a domain"""
     async def _dig():
         checker = DomainChecker(timeout=timeout)
         result = await checker.dig_lookup(domain, record_type)
-        display_domain_info(result)
+        
+        if output_format == "plain":
+            display_domain_info_plain(result)
+        elif output_format == "json":
+            display_domain_info_json(result)
+        else:  # rich
+            display_domain_info(result)
     
     asyncio.run(_dig())
 
@@ -335,14 +607,100 @@ def dig(
 def reverse(
     ip: str = typer.Argument(..., help="IP address to lookup"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Perform reverse DNS lookup for an IP address"""
     async def _reverse():
         checker = DomainChecker(timeout=timeout)
         result = await checker.reverse_lookup(ip)
-        display_domain_info(result)
+        
+        if output_format == "plain":
+            display_domain_info_plain(result)
+        elif output_format == "json":
+            display_domain_info_json(result)
+        else:  # rich
+            display_domain_info(result)
     
     asyncio.run(_reverse())
+
+
+def display_propagation_plain(summary):
+    """Display DNS propagation results in plain text format"""
+    from collections import defaultdict
+    
+    print("=" * 80)
+    print("DNS PROPAGATION CHECK")
+    print("=" * 80)
+    print(f"Domain: {summary.domain}")
+    print(f"Record Type: {summary.record_type}")
+    print(f"Total Resolvers: {summary.total_resolvers}")
+    print(f"Successful: {summary.successful}")
+    print(f"Failed: {summary.failed}")
+    print(f"Unique IPs: {len(summary.unique_ips)}")
+    print(f"Fully Propagated: {'Yes' if summary.fully_propagated else 'No'}")
+    print(f"Propagation: {summary.propagation_percentage:.1f}%")
+    print(f"Total Time: {summary.total_time:.2f}s")
+    
+    if summary.unique_ips:
+        print("\nRESOLVED IP ADDRESSES:")
+        for ip in sorted(summary.unique_ips):
+            print(f"  {ip}")
+    
+    # Group results by location
+    by_location = defaultdict(list)
+    for result in summary.results:
+        by_location[result.location].append(result)
+    
+    # Display results by location
+    for location in sorted(by_location.keys()):
+        results = by_location[location]
+        print(f"\n{location}:")
+        print(f"{'Resolver':<25} {'IP':<20} {'Result':<40} {'Time':<10}")
+        print("-" * 100)
+        
+        for result in results:
+            if result.success:
+                ips_str = ", ".join(result.resolved_ips) if result.resolved_ips else "No records"
+                status = "Success"
+            else:
+                ips_str = result.error
+                status = "Failed"
+            
+            print(f"{result.resolver_name:<25} {result.resolver_ip:<20} {status}: {ips_str:<40} {result.lookup_time:.2f}s")
+    
+    print("=" * 80)
+
+
+def display_propagation_json(summary):
+    """Display DNS propagation results in JSON format"""
+    from collections import defaultdict
+    
+    # Group results by location
+    by_location = defaultdict(list)
+    for result in summary.results:
+        by_location[result.location].append({
+            "resolver_name": result.resolver_name,
+            "resolver_ip": result.resolver_ip,
+            "success": result.success,
+            "resolved_ips": result.resolved_ips,
+            "error": result.error,
+            "lookup_time": result.lookup_time
+        })
+    
+    data = {
+        "domain": summary.domain,
+        "record_type": summary.record_type,
+        "total_resolvers": summary.total_resolvers,
+        "successful": summary.successful,
+        "failed": summary.failed,
+        "unique_ips": list(summary.unique_ips),
+        "fully_propagated": summary.fully_propagated,
+        "propagation_percentage": summary.propagation_percentage,
+        "total_time": summary.total_time,
+        "results_by_location": dict(by_location)
+    }
+    
+    print(json.dumps(data, indent=2))
 
 
 @app.command()
@@ -350,79 +708,90 @@ def prop(
     domain: str = typer.Argument(..., help="Domain name to check"),
     record_type: str = typer.Option("A", "--record", "-r", help="DNS record type: A, AAAA, MX, NS"),
     timeout: int = typer.Option(10, "--timeout", "-t", help="Timeout in seconds"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Check DNS propagation across regional ISPs"""
     async def _propagation():
         checker = DomainChecker(timeout=timeout)
         
-        console.print(f"\n[bold cyan]🌍 Checking DNS Propagation for {domain}[/bold cyan]")
-        console.print(f"[dim]Record Type: {record_type}[/dim]\n")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console
-        ) as progress:
-            task = progress.add_task("Querying DNS resolvers...", total=None)
+        # Only show progress bar and headers for rich output
+        if output_format == "rich":
+            console.print(f"\n[bold cyan]🌍 Checking DNS Propagation for {domain}[/bold cyan]")
+            console.print(f"[dim]Record Type: {record_type}[/dim]\n")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Querying DNS resolvers...", total=None)
+                summary = await checker.check_propagation(domain, record_type)
+                progress.update(task, completed=100)
+        else:
             summary = await checker.check_propagation(domain, record_type)
-            progress.update(task, completed=100)
         
-        # Display summary
-        console.print(Panel(
-            f"[bold]Domain:[/bold] {summary.domain}\n"
-            f"[bold]Record Type:[/bold] {summary.record_type}\n"
-            f"[bold]Total Resolvers:[/bold] {summary.total_resolvers}\n"
-            f"[bold]Successful:[/bold] {summary.successful}\n"
-            f"[bold]Failed:[/bold] {summary.failed}\n"
-            f"[bold]Unique IPs:[/bold] {len(summary.unique_ips)}\n"
-            f"[bold]Fully Propagated:[/bold] {'✅ Yes' if summary.fully_propagated else '❌ No'}\n"
-            f"[bold]Propagation:[/bold] {summary.propagation_percentage:.1f}%\n"
-            f"[bold]Total Time:[/bold] {summary.total_time:.2f}s",
-            title="Propagation Summary",
-            border_style="cyan"
-        ))
-        
-        # Display unique IPs
-        if summary.unique_ips:
-            console.print("\n[bold]Resolved IP Addresses:[/bold]")
-            for ip in sorted(summary.unique_ips):
-                console.print(f"  • {ip}")
-        
-        # Group results by location
-        from collections import defaultdict
-        by_location = defaultdict(list)
-        for result in summary.results:
-            by_location[result.location].append(result)
-        
-        # Display results by location
-        for location in sorted(by_location.keys()):
-            results = by_location[location]
-            console.print(f"\n[bold cyan]{location}:[/bold cyan]")
+        # Display based on format
+        if output_format == "plain":
+            display_propagation_plain(summary)
+        elif output_format == "json":
+            display_propagation_json(summary)
+        else:  # rich
+            # Display summary
+            console.print(Panel(
+                f"[bold]Domain:[/bold] {summary.domain}\n"
+                f"[bold]Record Type:[/bold] {summary.record_type}\n"
+                f"[bold]Total Resolvers:[/bold] {summary.total_resolvers}\n"
+                f"[bold]Successful:[/bold] {summary.successful}\n"
+                f"[bold]Failed:[/bold] {summary.failed}\n"
+                f"[bold]Unique IPs:[/bold] {len(summary.unique_ips)}\n"
+                f"[bold]Fully Propagated:[/bold] {'✅ Yes' if summary.fully_propagated else '❌ No'}\n"
+                f"[bold]Propagation:[/bold] {summary.propagation_percentage:.1f}%\n"
+                f"[bold]Total Time:[/bold] {summary.total_time:.2f}s",
+                title="Propagation Summary",
+                border_style="cyan"
+            ))
             
-            table = Table(show_header=True, header_style="bold", box=box.SIMPLE)
-            table.add_column("Resolver", style="dim")
-            table.add_column("IP", style="dim")
-            table.add_column("Result", justify="left")
-            table.add_column("Time", justify="right")
+            # Display unique IPs
+            if summary.unique_ips:
+                console.print("\n[bold]Resolved IP Addresses:[/bold]")
+                for ip in sorted(summary.unique_ips):
+                    console.print(f"  • {ip}")
             
-            for result in results:
-                if result.success:
-                    ips_str = ", ".join(result.resolved_ips) if result.resolved_ips else "[yellow]No records[/yellow]"
-                    status = "✅"
-                else:
-                    ips_str = f"[red]{result.error}[/red]"
-                    status = "❌"
+            # Group results by location
+            from collections import defaultdict
+            by_location = defaultdict(list)
+            for result in summary.results:
+                by_location[result.location].append(result)
+            
+            # Display results by location
+            for location in sorted(by_location.keys()):
+                results = by_location[location]
+                console.print(f"\n[bold cyan]{location}:[/bold cyan]")
                 
-                table.add_row(
-                    result.resolver_name,
-                    result.resolver_ip,
-                    f"{status} {ips_str}",
-                    f"{result.lookup_time:.2f}s"
-                )
-            
-            console.print(table)
+                table = Table(show_header=True, header_style="bold", box=box.SIMPLE)
+                table.add_column("Resolver", style="dim")
+                table.add_column("IP", style="dim")
+                table.add_column("Result", justify="left")
+                table.add_column("Time", justify="right")
+                
+                for result in results:
+                    if result.success:
+                        ips_str = ", ".join(result.resolved_ips) if result.resolved_ips else "[yellow]No records[/yellow]"
+                        status = "✅"
+                    else:
+                        ips_str = f"[red]{result.error}[/red]"
+                        status = "❌"
+                    
+                    table.add_row(
+                        result.resolver_name,
+                        result.resolver_ip,
+                        f"{status} {ips_str}",
+                        f"{result.lookup_time:.2f}s"
+                    )
+                
+                console.print(table)
     
     asyncio.run(_propagation())
 

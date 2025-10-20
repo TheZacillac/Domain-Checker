@@ -5,6 +5,39 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-01-27
+
+### Added
+- **Multiple Output Formats**: Support for Rich, Plain, JSON, and CSV output formats
+- **Plain Text Output**: Clean, copy/paste friendly output without formatting, colors, or emojis
+- **JSON Output**: Structured JSON output for programmatic use and integration with other tools
+- **CSV Output**: Comma-separated values format for bulk operations (Excel/spreadsheet import)
+- **Format Flag**: New `--format` (or `-f`) option for all major commands
+- **Format Support**: Output format support for `lookup`, `bulk`, `file`, `dig`, `reverse`, and `prop` commands
+- **Documentation**: Comprehensive output format documentation section in README
+- **Examples**: New EXAMPLES_OUTPUT_FORMATS.md with detailed use cases
+- **Test Script**: test_output_formats.py for demonstrating the new features
+
+### Changed
+- CLI commands now accept `--format` flag to specify output format
+- Progress bars and rich formatting only shown for `rich` format
+- Bulk and file commands now support CSV export for spreadsheet integration
+- Updated all command help text to indicate format support
+- Enhanced documentation with format comparison tables and use cases
+
+### Features
+- **Copy/Paste Friendly**: Plain format removes all Rich markup, making output easy to copy
+- **Programmatic Integration**: JSON format enables seamless integration with scripts and tools
+- **Excel Integration**: CSV format allows direct import into Excel and Google Sheets
+- **Backwards Compatible**: Default format remains `rich` for existing users
+- **Format-Specific Display**: Each format optimized for its use case
+
+### Use Cases
+- Copy name servers without formatting: `domch lookup example.com --format plain`
+- Extract registrar with jq: `domch lookup example.com --format json | jq '.data.registrar'`
+- Export to Excel: `domch file domains.txt --format csv > results.csv`
+- Script integration: `domch bulk domain1.com domain2.com --format json`
+
 ## [1.2.0] - 2025-01-27
 
 ### Added

@@ -10,7 +10,9 @@ An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a be
 - **DNS Propagation Checker**: Check DNS resolution across 20 regional ISP resolvers
 - **Reverse DNS**: IP address to hostname lookups
 - **Bulk Processing**: Check multiple domains with rate limiting
-- **Beautiful CLI**: Rich, colorful terminal interface
+- **Multiple Output Formats**: Rich (default), Plain, JSON, and CSV formats
+- **Copy/Paste Friendly**: Plain text output without formatting or colors
+- **Beautiful CLI**: Rich, colorful terminal interface with tables and panels
 - **MCP Server**: Connect via Model Context Protocol
 - **Configurable**: Extensive configuration options
 - **Error Handling**: Robust error handling and validation
@@ -126,6 +128,12 @@ domch compare example.com
 
 # Interactive mode
 domch interactive
+
+# Output Formats - Get copy/paste friendly output
+domch lookup example.com --format plain          # Clean text output
+domch lookup example.com --format json           # JSON output
+domch bulk example.com google.com --format csv   # CSV output for Excel
+domch prop example.com --format json             # JSON for propagation check
 ```
 
 ### Python API
@@ -191,36 +199,63 @@ export DOMAIN_CHECKER_PREFER_RDAP=true
 Lookup a single domain with detailed information display.
 
 ```bash
-domch lookup example.com [--method whois|rdap|dig|auto] [--timeout 30] [--raw] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch lookup example.com [--method whois|rdap|dig|auto] [--timeout 30] [--raw] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY] [--format rich|plain|json]
 ```
+
+**Output Formats:**
+- `rich` (default) - Beautiful, colorful terminal output with tables and panels
+- `plain` - Clean, copy/paste friendly text output without formatting
+- `json` - Structured JSON output for programmatic use
 
 ### `bulk`
 Lookup multiple domains with progress tracking.
 
 ```bash
-domch bulk domain1.com domain2.com [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch bulk domain1.com domain2.com [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY] [--format rich|plain|json|csv]
 ```
+
+**Output Formats:**
+- `rich` (default) - Beautiful, colorful terminal output with tables
+- `plain` - Clean, copy/paste friendly text output
+- `json` - Structured JSON output for programmatic use
+- `csv` - Comma-separated values for Excel/spreadsheet import
 
 ### `file`
 Lookup domains from a text file (one domain per line).
 
 ```bash
-domch file domains.txt [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch file domains.txt [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY] [--format rich|plain|json|csv]
 ```
+
+**Output Formats:**
+- `rich` (default) - Beautiful, colorful terminal output with tables
+- `plain` - Clean, copy/paste friendly text output
+- `json` - Structured JSON output for programmatic use
+- `csv` - Comma-separated values for Excel/spreadsheet import
 
 ### `dig`
 Perform DIG lookup for a domain with specific DNS record type.
 
 ```bash
-domch dig example.com [--record A|AAAA|MX|NS|SOA|TXT|ANY] [--timeout 30]
+domch dig example.com [--record A|AAAA|MX|NS|SOA|TXT|ANY] [--timeout 30] [--format rich|plain|json]
 ```
+
+**Output Formats:**
+- `rich` (default) - Beautiful, colorful terminal output
+- `plain` - Clean, copy/paste friendly text output
+- `json` - Structured JSON output
 
 ### `reverse`
 Perform reverse DNS lookup for an IP address.
 
 ```bash
-domch reverse 8.8.8.8 [--timeout 30]
+domch reverse 8.8.8.8 [--timeout 30] [--format rich|plain|json]
 ```
+
+**Output Formats:**
+- `rich` (default) - Beautiful, colorful terminal output
+- `plain` - Clean, copy/paste friendly text output
+- `json` - Structured JSON output
 
 ### `compare`
 Compare WHOIS and RDAP results for a domain.
@@ -263,6 +298,140 @@ domch about
 │ Repository: https://github.com/TheZacillac/domain-checker │
 │ License: MIT           │
 └────────────────────────┘
+```
+
+## Output Formats
+
+Domain Checker supports multiple output formats to suit different needs. Use the `--format` (or `-f`) flag to specify your preferred format.
+
+### Rich Format (Default)
+Beautiful, colorful terminal output with tables, panels, and emojis. Best for interactive use.
+
+```bash
+domch lookup example.com --format rich
+# or simply
+domch lookup example.com
+```
+
+### Plain Format
+Clean, copy/paste friendly text output without any formatting, colors, or emojis. Perfect for:
+- Copying data to other applications
+- Parsing output in scripts
+- Viewing in text editors
+- Terminal environments without color support
+
+```bash
+domch lookup example.com --format plain
+```
+
+**Example Output:**
+```
+============================================================
+DOMAIN INFORMATION
+============================================================
+Domain: example.com
+Method: RDAP
+Lookup Time: 0.45s
+Registrar: IANA
+Status: active
+
+NAME SERVERS:
+  a.iana-servers.net
+  b.iana-servers.net
+
+IMPORTANT DATES:
+  Creation: 1995-08-14 04:00:00
+  Expiration: 2024-08-13 04:00:00
+  Last Updated: 2023-08-14 07:01:38
+============================================================
+```
+
+### JSON Format
+Structured JSON output for programmatic use and integration with other tools.
+
+```bash
+domch lookup example.com --format json
+```
+
+**Example Output:**
+```json
+{
+  "domain": "example.com",
+  "success": true,
+  "method": "rdap",
+  "lookup_time": 0.45,
+  "registration_status": "registered",
+  "error": null,
+  "data": {
+    "domain": "example.com",
+    "registrar": "IANA",
+    "creation_date": "1995-08-14T04:00:00",
+    "expiration_date": "2024-08-13T04:00:00",
+    "updated_date": "2023-08-14T07:01:38",
+    "status": ["active"],
+    "name_servers": ["a.iana-servers.net", "b.iana-servers.net"],
+    "source": "rdap"
+  }
+}
+```
+
+### CSV Format (Bulk Operations Only)
+Comma-separated values format, perfect for importing into Excel or other spreadsheet applications.
+
+```bash
+domch bulk example.com google.com github.com --format csv
+# or save to file
+domch file domains.txt --format csv > results.csv
+```
+
+**Example Output:**
+```
+Domain,Registration Status,Method,Lookup Time (s),Registrar,Creation Date,Expiration Date,Status
+example.com,registered,RDAP,0.45,IANA,1995-08-14,2024-08-13,active
+google.com,registered,RDAP,0.52,MarkMonitor Inc.,1997-09-15,2028-09-14,clientTransferProhibited
+github.com,registered,RDAP,0.48,MarkMonitor Inc.,2007-10-09,2024-10-09,clientTransferProhibited
+```
+
+### Format Support by Command
+
+| Command | Rich | Plain | JSON | CSV |
+|---------|------|-------|------|-----|
+| `lookup` | ✅ | ✅ | ✅ | ❌ |
+| `bulk` | ✅ | ✅ | ✅ | ✅ |
+| `file` | ✅ | ✅ | ✅ | ✅ |
+| `dig` | ✅ | ✅ | ✅ | ❌ |
+| `reverse` | ✅ | ✅ | ✅ | ❌ |
+| `prop` | ✅ | ✅ | ✅ | ❌ |
+| `compare` | ✅ | ❌ | ❌ | ❌ |
+| `interactive` | ✅ | ❌ | ❌ | ❌ |
+
+### Use Cases
+
+**For Copy/Paste:**
+```bash
+# Get clean name servers list
+domch lookup example.com --format plain | grep -A 10 "NAME SERVERS"
+
+# Get just the IP addresses from propagation check
+domch prop example.com --format plain | grep -A 100 "RESOLVED IP"
+```
+
+**For Scripts:**
+```bash
+# Parse JSON with jq
+domch lookup example.com --format json | jq '.data.registrar'
+
+# Check if domain is registered
+domch lookup example.com --format json | jq -r '.registration_status'
+```
+
+**For Spreadsheets:**
+```bash
+# Export bulk results to Excel
+domch file domains.txt --format csv > domains.csv
+
+# Bulk check with CSV output
+domch bulk domain1.com domain2.com domain3.com --format csv > results.csv
 ```
 
 ## API Reference
