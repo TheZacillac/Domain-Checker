@@ -970,22 +970,6 @@ def update(
 
 
 @app.command()
-def gui():
-    """Launch the user-friendly graphical interface"""
-    try:
-        from .gui import run_gui
-        run_gui()
-    except ImportError as e:
-        console.print(f"[red]❌ GUI not available: {e}[/red]")
-        console.print("[yellow]To install the GUI dependency, run one of these commands:[/yellow]")
-        console.print("[cyan]  pip install textual[/cyan]")
-        console.print("[cyan]  pipx inject domain-checker textual[/cyan]")
-        console.print("[dim]Note: If you installed with pipx, use 'pipx inject' to add dependencies[/dim]")
-    except Exception as e:
-        console.print(f"[red]❌ Error launching GUI: {e}[/red]")
-
-
-@app.command()
 def about():
     """Show version information and credits"""
     from . import __version__
@@ -1003,7 +987,6 @@ def about():
 • DNS propagation checking
 • Bulk domain processing
 • Beautiful CLI interface
-• User-friendly GUI interface
 • MCP server integration
 
 [bold]Repository:[/bold] [link=https://github.com/TheZacillac/domain-checker]https://github.com/TheZacillac/domain-checker[/link]
@@ -1011,7 +994,6 @@ def about():
 
 [bold]Usage:[/bold]
 • CLI: [cyan]domch lookup example.com[/cyan]
-• GUI: [cyan]domch gui[/cyan] (user-friendly interface)
 
 [dim]Use 'domch --help' to see available commands[/dim]"""
     
