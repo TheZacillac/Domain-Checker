@@ -31,35 +31,42 @@ class DigClient:
         try:
             loop = asyncio.get_event_loop()
             
-            # If ANY is requested, query multiple record types
+            # If ANY is requested, query multiple record types in parallel
             if record_type.upper() == "ANY":
                 record_types = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CNAME"]
-                all_records = []
                 
-                # Query each record type
-                for rt in record_types:
+                # Create tasks for parallel execution
+                async def query_record_type(rt: str) -> tuple[str, str]:
                     try:
                         output = await loop.run_in_executor(
                             None, self._sync_dig_lookup, domain, rt
                         )
-                        if output.strip():
-                            all_records.append(f"=== {rt} Records ===")
-                            all_records.append(output.strip())
+                        return rt, output.strip() if output.strip() else ""
                     except:
-                        pass  # Skip failed record types
+                        return rt, ""
+                
+                # Execute all record type queries in parallel
+                tasks = [query_record_type(rt) for rt in record_types]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # Process results and combine records
+                all_records = []
+                auth_nameservers = []
+                
+                for result in results:
+                    if isinstance(result, Exception):
+                        continue
+                    rt, output = result
+                    if output:
+                        all_records.append(f"=== {rt} Records ===")
+                        all_records.append(output)
+                        
+                        # Extract NS records for authoritative nameservers
+                        if rt == "NS":
+                            auth_nameservers = self._parse_ns_records(output)
                 
                 # Combine all records
                 dig_output = "\n".join(all_records) if all_records else ""
-                
-                # Get authoritative name servers
-                auth_nameservers = []
-                try:
-                    ns_output = await loop.run_in_executor(
-                        None, self._sync_dig_lookup, domain, "NS"
-                    )
-                    auth_nameservers = self._parse_ns_records(ns_output)
-                except:
-                    pass
                 
                 return self._parse_dig_data(domain, dig_output, "ANY", auth_nameservers)
             
@@ -265,19 +272,29 @@ class DigClient:
         }
     
     async def lookup_multiple_types(self, domain: str, record_types: List[str]) -> Dict[str, DomainInfo]:
-        """Lookup multiple record types for a domain"""
-        results = {}
-        
-        for record_type in record_types:
+        """Lookup multiple record types for a domain in parallel"""
+        async def lookup_single_type(record_type: str) -> tuple[str, DomainInfo]:
             try:
                 result = await self.lookup(domain, record_type)
-                results[record_type] = result
+                return record_type, result
             except Exception as e:
-                results[record_type] = DomainInfo(
+                return record_type, DomainInfo(
                     domain=domain,
                     source="dig",
                     raw_data=f"Error: {str(e)}"
                 )
+        
+        # Execute all lookups in parallel
+        tasks = [lookup_single_type(rt) for rt in record_types]
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Convert to dictionary
+        results = {}
+        for result in results_list:
+            if isinstance(result, Exception):
+                continue
+            record_type, domain_info = result
+            results[record_type] = domain_info
         
         return results
     

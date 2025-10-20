@@ -10,8 +10,7 @@ import ipaddress
 import ssl
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
-import urllib.request
-import urllib.error
+import aiohttp
 from .models import DomainInfo
 
 # IANA RDAP Bootstrap URLs (from TheZacillac/rdap-cli)
@@ -33,38 +32,47 @@ class RdapClient:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
         self.bootstrap_cache: Dict[str, Any] = {}
+        self.session = None
     
     async def __aenter__(self):
         """Async context manager entry"""
+        # Create aiohttp session with keep-alive and connection pooling
+        connector = aiohttp.TCPConnector(
+            limit=100,  # Total connection pool size
+            limit_per_host=30,  # Per-host connection limit
+            keepalive_timeout=60,  # Keep connections alive for 60 seconds
+            enable_cleanup_closed=True
+        )
+        
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        self.session = aiohttp.ClientSession(
+            connector=connector,
+            timeout=timeout,
+            headers={'User-Agent': 'DomainChecker-RDAP/1.0 (https://github.com/TheZacillac/rdap-cli)'}
+        )
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
-        pass
+        if self.session:
+            await self.session.close()
     
     async def fetch_url(self, url: str) -> Dict:
-        """Fetch JSON data from a URL (async wrapper)"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._sync_fetch_url, url)
-    
-    def _sync_fetch_url(self, url: str) -> Dict:
-        """Synchronous URL fetch"""
+        """Fetch JSON data from a URL using aiohttp"""
+        if not self.session:
+            raise Exception("RDAP client session not initialized. Use 'async with RdapClient()'")
+        
         try:
-            # Create SSL context that doesn't verify certificates (for compatibility)
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            
-            req = urllib.request.Request(
-                url,
-                headers={'User-Agent': 'DomainChecker-RDAP/1.0 (https://github.com/TheZacillac/rdap-cli)'}
-            )
-            with urllib.request.urlopen(req, timeout=self.timeout, context=ctx) as response:
-                return json.loads(response.read().decode('utf-8'))
-        except urllib.error.HTTPError as e:
-            raise Exception(f"HTTP Error {e.code}: {e.reason}")
-        except urllib.error.URLError as e:
-            raise Exception(f"URL Error: {e.reason}")
+            async with self.session.get(url) as response:
+                if response.status >= 400:
+                    raise Exception(f"HTTP Error {response.status}: {response.reason}")
+                
+                text = await response.text()
+                return json.loads(text)
+        except aiohttp.ClientError as e:
+            raise Exception(f"HTTP Client Error: {str(e)}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"JSON Decode Error: {str(e)}")
         except Exception as e:
             raise Exception(f"Error fetching URL: {str(e)}")
     

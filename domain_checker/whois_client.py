@@ -85,6 +85,7 @@ class WhoisClient:
         admin_contact = self._extract_contact_info(whois_data.admin)
         tech_contact = self._extract_contact_info(whois_data.tech)
         
+        
         return DomainInfo(
             domain=domain,
             registrar=whois_data.registrar,
@@ -136,3 +137,4 @@ class WhoisClient:
             return {"raw": contact_data}
         
         return {"raw": str(contact_data)}
+    

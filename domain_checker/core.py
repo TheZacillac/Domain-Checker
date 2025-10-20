@@ -60,63 +60,68 @@ class DomainChecker:
             if method == "auto":
                 # Try RDAP first, fallback to WHOIS
                 try:
-                    async with self.rdap_client:
-                        domain_info = await self.rdap_client.lookup(domain)
-                        if domain_info.raw_data and "Error:" not in domain_info.raw_data:
-                            lookup_time = time.time() - start_time
-                            result = LookupResult(
-                                domain=domain,
-                                success=True,
-                                data=domain_info,
-                                lookup_time=lookup_time,
-                                method="rdap"
-                            )
-                            result.registration_status = self._determine_registration_status(result)
-                            return result
+                    async with self.throttler:  # Apply throttling for HTTP requests
+                        async with self.rdap_client:
+                            domain_info = await self.rdap_client.lookup(domain)
+                            if domain_info.raw_data and "Error:" not in domain_info.raw_data:
+                                lookup_time = time.time() - start_time
+                                result = LookupResult(
+                                    domain=domain,
+                                    success=True,
+                                    data=domain_info,
+                                    lookup_time=lookup_time,
+                                    method="rdap"
+                                )
+                                result.registration_status = self._determine_registration_status(result)
+                                return result
                 except Exception:
                     pass
                 
                 # Fallback to WHOIS
-                domain_info = await self.whois_client.lookup(domain)
-                lookup_time = time.time() - start_time
-                result = LookupResult(
-                    domain=domain,
-                    success=True,
-                    data=domain_info,
-                    lookup_time=lookup_time,
-                    method="whois"
-                )
-                result.registration_status = self._determine_registration_status(result)
-                return result
-            
-            elif method == "rdap":
-                async with self.rdap_client:
-                    domain_info = await self.rdap_client.lookup(domain)
+                async with self.throttler:  # Apply throttling for HTTP requests
+                    domain_info = await self.whois_client.lookup(domain)
                     lookup_time = time.time() - start_time
                     result = LookupResult(
                         domain=domain,
                         success=True,
                         data=domain_info,
                         lookup_time=lookup_time,
-                        method="rdap"
+                        method="whois"
                     )
                     result.registration_status = self._determine_registration_status(result)
                     return result
             
+            elif method == "rdap":
+                async with self.throttler:  # Apply throttling for HTTP requests
+                    async with self.rdap_client:
+                        domain_info = await self.rdap_client.lookup(domain)
+                        lookup_time = time.time() - start_time
+                        result = LookupResult(
+                            domain=domain,
+                            success=True,
+                            data=domain_info,
+                            lookup_time=lookup_time,
+                            method="rdap"
+                        )
+                        result.registration_status = self._determine_registration_status(result)
+                        return result
+            
             elif method == "whois":
-                domain_info = await self.whois_client.lookup(domain)
-                lookup_time = time.time() - start_time
-                result = LookupResult(
-                    domain=domain,
-                    success=True,
-                    data=domain_info,
-                    lookup_time=lookup_time,
-                    method="whois"
-                )
-                result.registration_status = self._determine_registration_status(result)
-                return result
+                async with self.throttler:  # Apply throttling for HTTP requests
+                    domain_info = await self.whois_client.lookup(domain)
+                    lookup_time = time.time() - start_time
+                    result = LookupResult(
+                        domain=domain,
+                        success=True,
+                        data=domain_info,
+                        lookup_time=lookup_time,
+                        method="whois"
+                    )
+                    result.registration_status = self._determine_registration_status(result)
+                    return result
             
             elif method == "dig":
+                # No throttling for local DIG operations
                 domain_info = await self.dig_client.lookup(domain, dig_record_type)
                 lookup_time = time.time() - start_time
                 result = LookupResult(
@@ -167,8 +172,7 @@ class DomainChecker:
         
         async def lookup_with_semaphore(domain: str) -> LookupResult:
             async with semaphore:
-                async with self.throttler:
-                    return await self.lookup_domain(domain, method, dig_record_type)
+                return await self.lookup_domain(domain, method, dig_record_type)
         
         # Execute all lookups concurrently
         tasks = [lookup_with_semaphore(domain) for domain in domains]
