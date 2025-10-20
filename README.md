@@ -24,10 +24,10 @@ An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a be
 git clone https://github.com/TheZacillac/domain-checker.git
 cd domain-checker
 
-# Install with pipx (recommended for isolation)
+# Install with pipx (recommended)
 pipx install -e .
 
-# Or install with pip
+# Alternative: Install with pip
 pip install -e .
 ```
 
@@ -42,11 +42,11 @@ pip install -e .
 # Install with pipx for isolated environment
 pipx install -e .
 
-# Or install from GitHub
+# Or install directly from GitHub
 pipx install git+https://github.com/TheZacillac/domain-checker.git
 ```
 
-#### 2. pip Installation
+#### 2. pip Installation (Alternative)
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -60,7 +60,7 @@ pip install -e .
 # Clone and install in development mode
 git clone https://github.com/TheZacillac/domain-checker.git
 cd domain-checker
-pip install -e .
+pipx install -e .
 
 # Install development dependencies (optional)
 pip install pytest black flake8 mypy
@@ -724,7 +724,7 @@ except DomainLookupError as e:
 ```
 ❌ Permission denied: /usr/local/bin/domch
 ```
-**Solution**: Use `pip install --user -e .` or install with pipx
+**Solution**: Use pipx for isolated installation: `pipx install -e .`
 
 #### 3. Externally Managed Environment
 ```
@@ -736,7 +736,7 @@ except DomainLookupError as e:
 ```
 ❌ ModuleNotFoundError: No module named 'domain_checker'
 ```
-**Solution**: Reinstall the package with `pip install -e .` or `pipx reinstall domain-checker`
+**Solution**: Reinstall the package with `pipx reinstall domain-checker`
 
 #### 5. Command Not Found
 ```

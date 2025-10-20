@@ -5,6 +5,34 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-27
+
+### Added
+- Comprehensive examples and documentation consolidated into README.md
+- Complete installation guide with pipx as primary method
+- Advanced usage examples including performance benchmarking
+- MCP server usage examples
+- Troubleshooting guide with common issues and solutions
+
+### Changed
+- Updated installation instructions to prioritize pipx over pip
+- Streamlined project structure by removing unnecessary files
+- Enhanced README with all functionality examples and documentation
+- Improved installation experience with better error handling guidance
+
+### Removed
+- Backup directory and build artifacts
+- Separate examples directory (consolidated into README)
+- Test files (can be created dynamically when needed)
+- Installation and build scripts (simplified to pipx/pip only)
+- Rust components for simpler maintenance
+- Separate documentation files (consolidated into README)
+
+### Fixed
+- Project bloat reduced significantly while maintaining all functionality
+- Single source of truth for all documentation and examples
+- Simplified installation process with pipx as primary method
+
 ## [1.0.8] - 2025-10-19
 
 ### Added
