@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.2] - 2025-01-27
+
+### Fixed
+- **Update Detection**: Fixed updater not detecting new commits when no new releases are created
+- **Main Branch Checking**: Updater now properly compares commit dates with release dates
+- **Update Logic**: Improved logic to detect updates from main branch when it's newer than latest release
+- **Update Information**: Enhanced update display to show whether update is from release or main branch
+
+### Changed
+- Updater now checks main branch commits first, then compares with latest release
+- Better update source detection (release vs main branch)
+- More detailed update information showing commit messages and dates
+- Improved error handling for date parsing and comparison
+
 ## [1.3.1] - 2025-01-27
 
 ### Fixed

@@ -56,36 +56,88 @@ class DomainCheckerUpdater:
             
             connector = aiohttp.TCPConnector(ssl=ssl_context)
             async with aiohttp.ClientSession(connector=connector) as session:
-                # Try to get latest release
-                async with session.get("https://api.github.com/repos/TheZacillac/domain-checker/releases/latest") as response:
-                    if response.status == 200:
-                        release_data = await response.json()
-                        latest_version = release_data.get("tag_name", "").lstrip("v")
-                        update_info = {
-                            "version": latest_version,
-                            "release_notes": release_data.get("body", ""),
-                            "published_at": release_data.get("published_at", ""),
-                            "download_url": release_data.get("tarball_url", "")
-                        }
-                        
-                        has_updates = self._compare_versions(self.current_version, latest_version)
-                        return has_updates, latest_version, update_info
-                
-                # Fallback: get latest commit from main branch
+                # Always check main branch first for latest commits
                 async with session.get("https://api.github.com/repos/TheZacillac/domain-checker/commits/main") as response:
                     if response.status == 200:
                         commit_data = await response.json()
                         latest_commit = commit_data.get("sha", "")[:8]
-                        update_info = {
-                            "version": f"main-{latest_commit}",
-                            "commit_message": commit_data.get("commit", {}).get("message", ""),
-                            "commit_date": commit_data.get("commit", {}).get("author", {}).get("date", ""),
-                            "commit_url": commit_data.get("html_url", "")
-                        }
+                        commit_date = commit_data.get("commit", {}).get("author", {}).get("date", "")
+                        commit_message = commit_data.get("commit", {}).get("message", "")
                         
-                        # For main branch, we'll assume there might be updates
-                        has_updates = True
-                        return has_updates, f"main-{latest_commit}", update_info
+                        # Also check for latest release to compare
+                        release_version = None
+                        release_date = None
+                        async with session.get("https://api.github.com/repos/TheZacillac/domain-checker/releases/latest") as release_response:
+                            if release_response.status == 200:
+                                release_data = await release_response.json()
+                                release_version = release_data.get("tag_name", "").lstrip("v")
+                                release_date = release_data.get("published_at", "")
+                        
+                        # Determine if there are updates
+                        has_updates = False
+                        update_source = "release"
+                        latest_version = release_version or f"main-{latest_commit}"
+                        
+                        if release_version and self._compare_versions(self.current_version, release_version):
+                            # New release available
+                            has_updates = True
+                            update_source = "release"
+                            latest_version = release_version
+                            update_info = {
+                                "version": latest_version,
+                                "source": "release",
+                                "release_notes": release_data.get("body", ""),
+                                "published_at": release_date,
+                                "download_url": release_data.get("tarball_url", "")
+                            }
+                        elif commit_date and release_date:
+                            # Compare commit date with release date
+                            from datetime import datetime
+                            try:
+                                commit_dt = datetime.fromisoformat(commit_date.replace('Z', '+00:00'))
+                                release_dt = datetime.fromisoformat(release_date.replace('Z', '+00:00'))
+                                
+                                if commit_dt > release_dt:
+                                    # Main branch is newer than latest release
+                                    has_updates = True
+                                    update_source = "main"
+                                    latest_version = f"main-{latest_commit}"
+                                    update_info = {
+                                        "version": latest_version,
+                                        "source": "main",
+                                        "commit_message": commit_message,
+                                        "commit_date": commit_date,
+                                        "commit_url": commit_data.get("html_url", ""),
+                                        "reason": "Main branch has newer commits than latest release"
+                                    }
+                            except:
+                                # If date parsing fails, assume main might have updates
+                                has_updates = True
+                                update_source = "main"
+                                latest_version = f"main-{latest_commit}"
+                                update_info = {
+                                    "version": latest_version,
+                                    "source": "main",
+                                    "commit_message": commit_message,
+                                    "commit_date": commit_date,
+                                    "commit_url": commit_data.get("html_url", ""),
+                                    "reason": "Could not compare dates, assuming updates available"
+                                }
+                        else:
+                            # No release data, check main branch
+                            has_updates = True
+                            update_source = "main"
+                            latest_version = f"main-{latest_commit}"
+                            update_info = {
+                                "version": latest_version,
+                                "source": "main",
+                                "commit_message": commit_message,
+                                "commit_date": commit_date,
+                                "commit_url": commit_data.get("html_url", ""),
+                                "reason": "No release data available, checking main branch"
+                            }
+                        
+                        return has_updates, latest_version, update_info
                         
         except Exception as e:
             console.print(f"[red]Error checking for updates: {e}[/red]")
@@ -303,13 +355,22 @@ class DomainCheckerUpdater:
 
 [bold]Current Version:[/bold] {self.current_version}
 [bold]Latest Version:[/bold] {latest_version}
+[bold]Update Source:[/bold] {update_info.get('source', 'unknown').title()}
 
 [bold]Update Information:[/bold]
 """
-                if "release_notes" in update_info and update_info["release_notes"]:
-                    update_text += f"Release Notes: {update_info['release_notes'][:200]}...\n"
-                if "commit_message" in update_info and update_info["commit_message"]:
-                    update_text += f"Latest Commit: {update_info['commit_message'][:100]}...\n"
+                if update_info.get("source") == "release":
+                    if "release_notes" in update_info and update_info["release_notes"]:
+                        update_text += f"Release Notes: {update_info['release_notes'][:200]}...\n"
+                    if "published_at" in update_info:
+                        update_text += f"Published: {update_info['published_at']}\n"
+                elif update_info.get("source") == "main":
+                    if "commit_message" in update_info and update_info["commit_message"]:
+                        update_text += f"Latest Commit: {update_info['commit_message'][:100]}...\n"
+                    if "commit_date" in update_info:
+                        update_text += f"Commit Date: {update_info['commit_date']}\n"
+                    if "reason" in update_info:
+                        update_text += f"Reason: {update_info['reason']}\n"
                 
                 console.print(Panel(update_text, title="Update Available", border_style="yellow"))
             elif force:
