@@ -68,47 +68,46 @@ def format_contact_plain(contact: Optional[dict]) -> str:
 
 
 def display_domain_info_plain(result: LookupResult):
-    """Display domain information in plain text format"""
+    """Display domain information in plain text format with color coding"""
     if not result.success or not result.data:
-        print(f"Failed to lookup {result.domain}")
+        console.print(f"[red]Failed to lookup {result.domain}[/red]")
         if result.error:
-            print(f"Error: {result.error}")
+            console.print(f"[red]Error: {result.error}[/red]")
         return
     
     domain_info = result.data
     is_dig = result.method.lower() == 'dig'
     
-    print("=" * 60)
-    print("DOMAIN INFORMATION")
-    print("=" * 60)
-    print(f"Domain: {domain_info.domain}")
-    print(f"Method: {result.method.upper()}")
-    print(f"Lookup Time: {result.lookup_time:.2f}s")
+    console.print("[bold blue]Domain Information[/bold blue]")
+    console.print("[cyan]Domain:[/cyan] " + domain_info.domain)
+    console.print("[cyan]Method:[/cyan] " + result.method.upper())
+    console.print("[cyan]Lookup Time:[/cyan] " + f"{result.lookup_time:.2f}s")
     
     if not is_dig:
-        print(f"Registrar: {domain_info.registrar or 'N/A'}")
-        print(f"Status: {', '.join(domain_info.status) if domain_info.status else 'N/A'}")
+        console.print("[cyan]Registrar:[/cyan] " + (domain_info.registrar or "N/A"))
+        status = ", ".join(domain_info.status) if domain_info.status else "N/A"
+        console.print("[cyan]Status:[/cyan] " + status)
     
     # Name servers
     if domain_info.name_servers:
-        print("\nNAME SERVERS:")
+        console.print("[bold green]Name Servers:[/bold green]")
         for ns in domain_info.name_servers:
-            print(f"  {ns}")
+            console.print("[green]  " + ns + "[/green]")
     
     # For DIG lookups, show resolved records
     if is_dig and domain_info.raw_data:
         records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
         if records:
-            print("\nRESOLVED RECORDS:")
+            console.print("[bold green]Resolved Records:[/bold green]")
             for record in records:
-                print(f"  {record}")
+                console.print("[green]  " + record + "[/green]")
     
     # Dates (skip for DIG)
     if not is_dig:
-        print("\nIMPORTANT DATES:")
-        print(f"  Creation: {format_date_plain(domain_info.creation_date)}")
-        print(f"  Expiration: {format_date_plain(domain_info.expiration_date)}")
-        print(f"  Last Updated: {format_date_plain(domain_info.updated_date)}")
+        console.print("[bold yellow]Important Dates:[/bold yellow]")
+        console.print("[yellow]  Creation:[/yellow] " + format_date_plain(domain_info.creation_date))
+        console.print("[yellow]  Expiration:[/yellow] " + format_date_plain(domain_info.expiration_date))
+        console.print("[yellow]  Last Updated:[/yellow] " + format_date_plain(domain_info.updated_date))
     
     # Contacts (skip for DIG)
     if not is_dig:
@@ -119,15 +118,13 @@ def display_domain_info_plain(result: LookupResult):
         )
         
         if has_contacts:
-            print("\nCONTACT INFORMATION:")
+            console.print("[bold magenta]Contact Information:[/bold magenta]")
             if domain_info.registrant:
-                print(f"  Registrant: {format_contact_plain(domain_info.registrant)}")
+                console.print("[magenta]  Registrant:[/magenta] " + format_contact_plain(domain_info.registrant))
             if domain_info.admin_contact:
-                print(f"  Admin: {format_contact_plain(domain_info.admin_contact)}")
+                console.print("[magenta]  Admin:[/magenta] " + format_contact_plain(domain_info.admin_contact))
             if domain_info.tech_contact:
-                print(f"  Technical: {format_contact_plain(domain_info.tech_contact)}")
-    
-    print("=" * 60)
+                console.print("[magenta]  Technical:[/magenta] " + format_contact_plain(domain_info.tech_contact))
 
 
 def display_domain_info_json(result: LookupResult):
@@ -161,39 +158,36 @@ def display_domain_info_json(result: LookupResult):
 
 
 def display_bulk_results_plain(results: BulkLookupResult):
-    """Display bulk results in plain text format"""
+    """Display bulk results in plain text format with color coding"""
     registered_count = sum(1 for r in results.results if r.registration_status == "registered")
     not_registered_count = sum(1 for r in results.results if r.registration_status == "not_registered")
     possibly_registered_count = sum(1 for r in results.results if r.registration_status == "possibly_registered")
     
-    print("=" * 80)
-    print("BULK LOOKUP SUMMARY")
-    print("=" * 80)
-    print(f"Total Domains: {results.total_domains}")
-    print(f"Registered: {registered_count}")
-    print(f"Not Registered: {not_registered_count}")
-    print(f"Possibly Registered: {possibly_registered_count}")
-    print(f"Total Time: {results.total_time:.2f}s")
-    print(f"Average per Domain: {results.average_time_per_domain:.2f}s")
-    print("=" * 80)
-    print(f"\n{'Domain':<30} {'Status':<20} {'Method':<10} {'Time':<10} {'Registrar':<30}")
-    print("-" * 100)
+    console.print("[bold blue]Bulk Lookup Summary[/bold blue]")
+    console.print("[cyan]Total Domains:[/cyan] " + str(results.total_domains))
+    console.print("[green]Registered:[/green] " + str(registered_count))
+    console.print("[red]Not Registered:[/red] " + str(not_registered_count))
+    console.print("[yellow]Possibly Registered:[/yellow] " + str(possibly_registered_count))
+    console.print("[cyan]Total Time:[/cyan] " + f"{results.total_time:.2f}s")
+    console.print("[cyan]Average per Domain:[/cyan] " + f"{results.average_time_per_domain:.2f}s")
+    console.print("")
+    console.print("[bold]Domain\tStatus\tMethod\tTime\tRegistrar[/bold]")
     
     for result in results.results:
         if result.registration_status == "registered":
-            status = "Registered"
+            status = "[green]Registered[/green]"
         elif result.registration_status == "not_registered":
-            status = "Not Registered"
+            status = "[red]Not Registered[/red]"
         elif result.registration_status == "possibly_registered":
-            status = "Possibly Registered"
+            status = "[yellow]Possibly Registered[/yellow]"
         else:
-            status = "Success" if result.success else "Failed"
+            status = "[green]Success[/green]" if result.success else "[red]Failed[/red]"
         
         method = result.method.upper() if result.method else "N/A"
         time_str = f"{result.lookup_time:.2f}s"
         registrar = result.data.registrar if result.data and result.data.registrar else "N/A"
         
-        print(f"{result.domain:<30} {status:<20} {method:<10} {time_str:<10} {registrar:<30}")
+        console.print(result.domain + "\t" + status + "\t" + method + "\t" + time_str + "\t" + registrar)
 
 
 def display_bulk_results_json(results: BulkLookupResult):
@@ -625,26 +619,31 @@ def reverse(
 
 
 def display_propagation_plain(summary):
-    """Display DNS propagation results in plain text format"""
+    """Display DNS propagation results in plain text format with color coding"""
     from collections import defaultdict
     
-    print("=" * 80)
-    print("DNS PROPAGATION CHECK")
-    print("=" * 80)
-    print(f"Domain: {summary.domain}")
-    print(f"Record Type: {summary.record_type}")
-    print(f"Total Resolvers: {summary.total_resolvers}")
-    print(f"Successful: {summary.successful}")
-    print(f"Failed: {summary.failed}")
-    print(f"Unique IPs: {len(summary.unique_ips)}")
-    print(f"Fully Propagated: {'Yes' if summary.fully_propagated else 'No'}")
-    print(f"Propagation: {summary.propagation_percentage:.1f}%")
-    print(f"Total Time: {summary.total_time:.2f}s")
+    console.print("[bold blue]DNS Propagation Check[/bold blue]")
+    console.print("[cyan]Domain:[/cyan] " + summary.domain)
+    console.print("[cyan]Record Type:[/cyan] " + summary.record_type)
+    console.print("[cyan]Total Resolvers:[/cyan] " + str(summary.total_resolvers))
+    console.print("[green]Successful:[/green] " + str(summary.successful))
+    console.print("[red]Failed:[/red] " + str(summary.failed))
+    console.print("[cyan]Unique IPs:[/cyan] " + str(len(summary.unique_ips)))
+    
+    # Color code propagation status
+    if summary.fully_propagated:
+        console.print("[green]Fully Propagated: Yes[/green]")
+        console.print("[green]Propagation: " + f"{summary.propagation_percentage:.1f}%[/green]")
+    else:
+        console.print("[yellow]Fully Propagated: No[/yellow]")
+        console.print("[yellow]Propagation: " + f"{summary.propagation_percentage:.1f}%[/yellow]")
+    
+    console.print("[cyan]Total Time:[/cyan] " + f"{summary.total_time:.2f}s")
     
     if summary.unique_ips:
-        print("\nRESOLVED IP ADDRESSES:")
+        console.print("[bold green]Resolved IP Addresses:[/bold green]")
         for ip in sorted(summary.unique_ips):
-            print(f"  {ip}")
+            console.print("[green]  " + ip + "[/green]")
     
     # Group results by location
     by_location = defaultdict(list)
@@ -654,21 +653,19 @@ def display_propagation_plain(summary):
     # Display results by location
     for location in sorted(by_location.keys()):
         results = by_location[location]
-        print(f"\n{location}:")
-        print(f"{'Resolver':<25} {'IP':<20} {'Result':<40} {'Time':<10}")
-        print("-" * 100)
+        console.print("")
+        console.print("[bold magenta]" + location + ":[/bold magenta]")
+        console.print("[bold]Resolver\tIP\tResult\tTime[/bold]")
         
         for result in results:
             if result.success:
                 ips_str = ", ".join(result.resolved_ips) if result.resolved_ips else "No records"
-                status = "Success"
+                status = "[green]Success[/green]"
             else:
                 ips_str = result.error
-                status = "Failed"
+                status = "[red]Failed[/red]"
             
-            print(f"{result.resolver_name:<25} {result.resolver_ip:<20} {status}: {ips_str:<40} {result.lookup_time:.2f}s")
-    
-    print("=" * 80)
+            console.print(result.resolver_name + "\t" + result.resolver_ip + "\t" + status + ": " + ips_str + "\t" + f"{result.lookup_time:.2f}s")
 
 
 def display_propagation_json(summary):
