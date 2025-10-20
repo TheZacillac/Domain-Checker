@@ -67,16 +67,16 @@ A comprehensive updater system has been successfully integrated into the Domain 
 ### CLI Commands
 ```bash
 # Check for updates
-domain-check update --check
+domch update --check
 
 # Update if available
-domain-check update
+domch update
 
 # Force update
-domain-check update --force
+domch update --force
 
 # Rollback to previous version
-domain-check update --rollback 1.0.4
+domch update --rollback 1.0.4
 ```
 
 ### Python API

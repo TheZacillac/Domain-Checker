@@ -124,7 +124,7 @@ class UpdateChecker:
             if "html_url" in update_info:
                 message += f"🔗 {update_info['html_url']}\n"
         
-        message += "\nRun 'domain-check update' to update automatically"
+        message += "\nRun 'domch update' to update automatically"
         return message
 
 

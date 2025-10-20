@@ -20,7 +20,7 @@ from .models import LookupResult, BulkLookupResult
 from .updater import DomainCheckerUpdater
 
 app = typer.Typer(
-    name="domain-check",
+    name="domch",
     help="Asynchronous domain checker with WHOIS and RDAP support",
     add_completion=False
 )

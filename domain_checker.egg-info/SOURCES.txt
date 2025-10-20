@@ -12,6 +12,8 @@ domain_checker/mcp_server.py
 domain_checker/models.py
 domain_checker/propagation_checker.py
 domain_checker/rdap_client.py
+domain_checker/update_checker.py
+domain_checker/updater.py
 domain_checker/utils.py
 domain_checker/whois_client.py
 domain_checker.egg-info/PKG-INFO

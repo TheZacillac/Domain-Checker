@@ -5,6 +5,23 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-10-19
+
+### Changed
+- Updated CLI command name from `domain-check` to `domch` for improved usability
+- Shorter, more convenient command name (5 characters vs 12 characters)
+- Updated all documentation and examples to use new command name
+- Improved command-line ergonomics and typing efficiency
+
+### Removed
+- Legacy `domain-check` command (breaking change for existing users)
+- Users must update scripts and aliases to use `domch` command
+
+### Fixed
+- All CLI functionality preserved with new command name
+- Complete documentation updates across all files
+- Package reinstallation required to access new command
+
 ## [1.0.5] - 2025-10-19
 
 ### Added

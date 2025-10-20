@@ -35,33 +35,33 @@ pip install -e .
 
 ```bash
 # Lookup a single domain
-domain-check lookup example.com
+domch lookup example.com
 
 # Lookup with specific method
-domain-check lookup example.com --method rdap
+domch lookup example.com --method rdap
 
 # DIG lookup with specific record type
-domain-check dig example.com --record A
-domain-check dig example.com --record MX
-domain-check dig example.com --record NS
+domch dig example.com --record A
+domch dig example.com --record MX
+domch dig example.com --record NS
 
 # Reverse DNS lookup
-domain-check reverse 8.8.8.8
+domch reverse 8.8.8.8
 
 # Check DNS propagation across regional ISPs
-domain-check propagation example.com --record A
+domch propagation example.com --record A
 
 # Bulk lookup with DIG
-domain-check bulk example.com google.com --method dig --dig-record A
+domch bulk example.com google.com --method dig --dig-record A
 
 # Lookup from file
-domain-check file domains.txt
+domch file domains.txt
 
 # Compare WHOIS vs RDAP
-domain-check compare example.com
+domch compare example.com
 
 # Interactive mode
-domain-check interactive
+domch interactive
 ```
 
 ### Python API
@@ -127,49 +127,49 @@ export DOMAIN_CHECKER_PREFER_RDAP=true
 Lookup a single domain with detailed information display.
 
 ```bash
-domain-check lookup example.com [--method whois|rdap|dig|auto] [--timeout 30] [--raw] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch lookup example.com [--method whois|rdap|dig|auto] [--timeout 30] [--raw] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
 ```
 
 ### `bulk`
 Lookup multiple domains with progress tracking.
 
 ```bash
-domain-check bulk domain1.com domain2.com [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch bulk domain1.com domain2.com [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
 ```
 
 ### `file`
 Lookup domains from a text file (one domain per line).
 
 ```bash
-domain-check file domains.txt [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
+domch file domains.txt [--method auto] [--concurrent 10] [--rate-limit 1.0] [--dig-record A|AAAA|MX|NS|SOA|TXT|ANY]
 ```
 
 ### `dig`
 Perform DIG lookup for a domain with specific DNS record type.
 
 ```bash
-domain-check dig example.com [--record A|AAAA|MX|NS|SOA|TXT|ANY] [--timeout 30]
+domch dig example.com [--record A|AAAA|MX|NS|SOA|TXT|ANY] [--timeout 30]
 ```
 
 ### `reverse`
 Perform reverse DNS lookup for an IP address.
 
 ```bash
-domain-check reverse 8.8.8.8 [--timeout 30]
+domch reverse 8.8.8.8 [--timeout 30]
 ```
 
 ### `compare`
 Compare WHOIS and RDAP results for a domain.
 
 ```bash
-domain-check compare example.com [--timeout 30]
+domch compare example.com [--timeout 30]
 ```
 
 ### `interactive`
 Start interactive mode for repeated lookups.
 
 ```bash
-domain-check interactive
+domch interactive
 ```
 
 ## API Reference

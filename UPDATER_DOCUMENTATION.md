@@ -34,25 +34,25 @@ The Domain Checker includes a comprehensive updater system that can check for up
 
 #### Check for Updates
 ```bash
-domain-check update --check
+domch update --check
 ```
 Shows if updates are available without installing them.
 
 #### Update Installation
 ```bash
-domain-check update
+domch update
 ```
 Checks for updates and prompts to install if available.
 
 #### Force Update
 ```bash
-domain-check update --force
+domch update --force
 ```
 Forces update even if no changes are detected.
 
 #### Rollback to Previous Version
 ```bash
-domain-check update --rollback 1.0.4
+domch update --rollback 1.0.4
 ```
 Rolls back to a specific version using backup.
 
@@ -272,13 +272,13 @@ Error: git command not found
 ### Basic Update Workflow
 ```bash
 # Check for updates
-domain-check update --check
+domch update --check
 
 # Update if available
-domain-check update
+domch update
 
 # Rollback if needed
-domain-check update --rollback 1.0.4
+domch update --rollback 1.0.4
 ```
 
 ### Automated Update Script
@@ -307,9 +307,9 @@ asyncio.run(auto_update())
 # Update script for CI/CD pipeline
 
 # Check for updates
-if domain-check update --check | grep -q "Update available"; then
+if domch update --check | grep -q "Update available"; then
     echo "Updates found, installing..."
-    domain-check update --force
+    domch update --force
     echo "Update completed"
 else
     echo "No updates available"

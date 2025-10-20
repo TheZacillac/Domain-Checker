@@ -1,2 +1,2 @@
 [console_scripts]
-domain-check = domain_checker.cli:main
+domch = domain_checker.cli:main

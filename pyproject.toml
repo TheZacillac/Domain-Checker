@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "domain-checker"
-version = "1.0.5"
+version = "1.0.6"
 description = "Asynchronous domain checker with WHOIS and RDAP support"
 authors = [{name = "Domain Checker", email = "domain@example.com"}]
 license = {text = "MIT"}
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-domain-check = "domain_checker.cli:main"
+domch = "domain_checker.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
