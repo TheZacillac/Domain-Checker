@@ -28,6 +28,9 @@ class DomainCheckerUpdater:
         self.repo_url = "https://github.com/TheZacillac/domain-checker.git"
         self.current_version = self._get_current_version()
         self.temp_dir = None
+        self.pulled_commit_hash = None
+        self.pulled_commit_msg = None
+        self.pulled_commit_date = None
         
     def _get_current_version(self) -> str:
         """Get the current installed version"""
@@ -109,7 +112,7 @@ class DomainCheckerUpdater:
             # If version comparison fails, assume update is available
             return True
     
-    async def get_repository_changes(self) -> List[Dict]:
+    async def get_repository_changes(self, force: bool = False) -> List[Dict]:
         """Get list of changes from the repository"""
         try:
             # Clone repository to temp directory
@@ -120,19 +123,92 @@ class DomainCheckerUpdater:
                 TextColumn("[progress.description]{task.description}"),
                 console=console
             ) as progress:
-                task = progress.add_task("Fetching repository...", total=None)
+                task = progress.add_task("Fetching latest repository...", total=None)
                 
-                # Clone the repository
-                result = subprocess.run([
-                    "git", "clone", "--depth", "1", 
-                    self.repo_url, self.temp_dir
-                ], capture_output=True, text=True)
+                # Clone the repository with explicit main branch
+                # Using --branch main and --single-branch to ensure we get latest main
+                clone_cmd = [
+                    "git", "clone",
+                    "--depth", "1",
+                    "--branch", "main",
+                    "--single-branch",
+                    self.repo_url,
+                    self.temp_dir
+                ]
+                
+                # Force fresh clone (no caching)
+                result = subprocess.run(
+                    clone_cmd,
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "GIT_TERMINAL_PROMPT": "0"}  # No prompts
+                )
                 
                 if result.returncode != 0:
                     console.print(f"[red]Failed to clone repository: {result.stderr}[/red]")
                     return []
                 
+                # If force, verify we have the absolute latest commit
+                if force:
+                    # Fetch to ensure we have the very latest
+                    fetch_result = subprocess.run(
+                        ["git", "fetch", "origin", "main"],
+                        cwd=self.temp_dir,
+                        capture_output=True,
+                        text=True
+                    )
+                    if fetch_result.returncode == 0:
+                        # Reset to latest
+                        subprocess.run(
+                            ["git", "reset", "--hard", "origin/main"],
+                            cwd=self.temp_dir,
+                            capture_output=True,
+                            text=True
+                        )
+                
                 progress.update(task, description="Repository fetched successfully")
+            
+            # Get the commit hash that was pulled
+            commit_hash = None
+            commit_msg = None
+            commit_date = None
+            try:
+                commit_result = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=self.temp_dir,
+                    capture_output=True,
+                    text=True
+                )
+                if commit_result.returncode == 0:
+                    commit_hash = commit_result.stdout.strip()[:8]
+                
+                # Get commit message
+                msg_result = subprocess.run(
+                    ["git", "log", "-1", "--pretty=%B"],
+                    cwd=self.temp_dir,
+                    capture_output=True,
+                    text=True
+                )
+                if msg_result.returncode == 0:
+                    commit_msg = msg_result.stdout.strip()
+                
+                # Get commit date
+                date_result = subprocess.run(
+                    ["git", "log", "-1", "--pretty=%ci"],
+                    cwd=self.temp_dir,
+                    capture_output=True,
+                    text=True
+                )
+                if date_result.returncode == 0:
+                    commit_date = date_result.stdout.strip()
+                    
+            except Exception:
+                pass
+            
+            # Store commit info for later display
+            self.pulled_commit_hash = commit_hash
+            self.pulled_commit_msg = commit_msg
+            self.pulled_commit_date = commit_date
             
             # Get list of files in the repository
             repo_files = []
@@ -206,15 +282,22 @@ class DomainCheckerUpdater:
             True if update was successful
         """
         try:
-            # Check for updates
-            has_updates, latest_version, update_info = await self.check_for_updates()
-            
-            if not has_updates and not force:
-                console.print("[green]✅ You're already running the latest version![/green]")
-                return True
+            # Check for updates (skip if force)
+            if force:
+                console.print("[yellow]⚡ Force update requested - pulling latest from main branch...[/yellow]")
+                has_updates = True
+                latest_version = "main (latest)"
+                update_info = {"source": "forced"}
+            else:
+                has_updates, latest_version, update_info = await self.check_for_updates()
+                
+                if not has_updates:
+                    console.print("[green]✅ You're already running the latest version![/green]")
+                    console.print("[dim]Use --force to update anyway[/dim]")
+                    return True
             
             # Show update information
-            if update_info:
+            if update_info and update_info.get("source") != "forced":
                 update_text = f"""
 [bold blue]Update Available![/bold blue]
 
@@ -223,12 +306,20 @@ class DomainCheckerUpdater:
 
 [bold]Update Information:[/bold]
 """
-                if "release_notes" in update_info:
+                if "release_notes" in update_info and update_info["release_notes"]:
                     update_text += f"Release Notes: {update_info['release_notes'][:200]}...\n"
-                if "commit_message" in update_info:
+                if "commit_message" in update_info and update_info["commit_message"]:
                     update_text += f"Latest Commit: {update_info['commit_message'][:100]}...\n"
                 
                 console.print(Panel(update_text, title="Update Available", border_style="yellow"))
+            elif force:
+                console.print(Panel(
+                    f"[bold]Current Version:[/bold] {self.current_version}\n"
+                    f"[bold]Target:[/bold] Latest main branch\n\n"
+                    f"[yellow]This will pull the absolute latest code from GitHub.[/yellow]",
+                    title="Force Update",
+                    border_style="yellow"
+                ))
             
             # Confirm update
             if not force and not Confirm.ask("Do you want to update now?"):
@@ -242,7 +333,7 @@ class DomainCheckerUpdater:
                 console=console
             ) as progress:
                 task = progress.add_task("Checking for changes...", total=None)
-                repo_files = await self.get_repository_changes()
+                repo_files = await self.get_repository_changes(force=force)
                 progress.update(task, description="Changes checked")
             
             if not repo_files:
@@ -315,9 +406,21 @@ class DomainCheckerUpdater:
 [bold]Files Updated:[/bold] {len(updated_files)}
 [bold]Files Skipped:[/bold] {len(skipped_files)}
 [bold]Backup Location:[/bold] {backup_path}
-
-[bold]Updated Files:[/bold]
 """
+            
+            # Add commit information if available
+            if hasattr(self, 'pulled_commit_hash') and self.pulled_commit_hash:
+                result_text += f"\n[bold cyan]📦 Pulled Commit:[/bold cyan]\n"
+                result_text += f"  [bold]Hash:[/bold] {self.pulled_commit_hash}\n"
+                if self.pulled_commit_msg:
+                    msg_preview = self.pulled_commit_msg[:80]
+                    if len(self.pulled_commit_msg) > 80:
+                        msg_preview += "..."
+                    result_text += f"  [bold]Message:[/bold] {msg_preview}\n"
+                if self.pulled_commit_date:
+                    result_text += f"  [bold]Date:[/bold] {self.pulled_commit_date}\n"
+            
+            result_text += f"\n[bold]Updated Files:[/bold]\n"
             for file in updated_files[:10]:  # Show first 10 files
                 result_text += f"  • {file}\n"
             

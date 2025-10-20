@@ -5,6 +5,22 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-01-27
+
+### Fixed
+- **Update Command**: Fixed updater not pulling latest files from GitHub
+- Force update now explicitly pulls from main branch with git fetch/reset
+- Added commit hash verification to show exactly what was pulled
+- Improved force update messaging to show it's pulling latest main branch
+- Fixed version comparison logic when local version is newer than releases
+- Update now displays commit hash, message, and date of pulled code
+
+### Changed
+- Force update bypasses version checks completely and always pulls latest
+- Updater now explicitly targets main branch with `--single-branch`
+- Added git fetch + reset when force flag is used for absolute latest
+- Better user feedback showing which commit was pulled during update
+
 ## [1.3.0] - 2025-01-27
 
 ### Added
