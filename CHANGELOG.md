@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.3] - 2025-01-27
+
+### Fixed
+- **Raw Data Display**: Fixed `--raw` flag not working properly across all output formats
+- **Raw Data Logic**: Raw data now shows when `--raw` flag is used, regardless of data length
+- **JSON Output**: Raw data is now properly included/excluded in JSON format based on `--raw` flag
+- **Plain Output**: Raw data now displays in plain text format when `--raw` flag is used
+- **Command Consistency**: Added `--raw` flag to `dig` and `reverse` commands for consistency
+
+### Changed
+- Raw data display logic now respects the `--raw` flag explicitly
+- Removed 1000 character limit when `--raw` is explicitly requested
+- All display functions now accept `show_raw` parameter for consistent behavior
+
 ## [1.3.2] - 2025-01-27
 
 ### Fixed

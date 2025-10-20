@@ -2,7 +2,7 @@
 Domain Checker - Asynchronous domain lookup with WHOIS and RDAP support
 """
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 __author__ = "Domain Checker"
 __email__ = "domain@example.com"
 

@@ -68,7 +68,7 @@ def format_contact_plain(contact: Optional[dict]) -> str:
     return ", ".join(parts) if parts else "N/A"
 
 
-def display_domain_info_plain(result: LookupResult):
+def display_domain_info_plain(result: LookupResult, show_raw: bool = False):
     """Display domain information in plain text format with color coding"""
     if not result.success or not result.data:
         print(f"Failed to lookup {result.domain}")
@@ -126,9 +126,14 @@ def display_domain_info_plain(result: LookupResult):
                 print("  Admin: " + format_contact_plain(domain_info.admin_contact))
             if domain_info.tech_contact:
                 print("  Technical: " + format_contact_plain(domain_info.tech_contact))
+    
+    # Show raw data if requested
+    if show_raw and domain_info.raw_data:
+        print("\nRaw Data:")
+        print(domain_info.raw_data)
 
 
-def display_domain_info_json(result: LookupResult):
+def display_domain_info_json(result: LookupResult, show_raw: bool = False):
     """Display domain information in JSON format"""
     data = {
         "domain": result.domain,
@@ -152,7 +157,7 @@ def display_domain_info_json(result: LookupResult):
             "admin_contact": result.data.admin_contact,
             "tech_contact": result.data.tech_contact,
             "source": result.data.source,
-            "raw_data": result.data.raw_data
+            "raw_data": result.data.raw_data if show_raw else None
         }
     
     print(json.dumps(data, indent=2))
@@ -293,7 +298,7 @@ def format_contact(contact: Optional[dict]) -> str:
     return "\n".join(parts) if parts else "[dim]N/A[/dim]"
 
 
-def display_domain_info(result: LookupResult):
+def display_domain_info(result: LookupResult, show_raw: bool = False):
     """Display detailed domain information"""
     if not result.success or not result.data:
         console.print(f"[red]❌ Failed to lookup {result.domain}[/red]")
@@ -400,7 +405,12 @@ def display_domain_info(result: LookupResult):
         console.print(contacts_table)
     
     # Show raw data if requested (skip for DIG as we already showed it nicely above)
-    if not is_dig and domain_info.raw_data and len(domain_info.raw_data) < 1000:
+    if show_raw and domain_info.raw_data:
+        console.print("\n[bold]Raw Data:[/bold]")
+        syntax = Syntax(domain_info.raw_data, "text", theme="monokai", line_numbers=True)
+        console.print(Panel(syntax, title="Raw Data", border_style="blue"))
+    elif not is_dig and domain_info.raw_data and len(domain_info.raw_data) < 1000:
+        # Show raw data automatically if it's small and not explicitly requested
         console.print("\n[bold]Raw Data:[/bold]")
         syntax = Syntax(domain_info.raw_data, "text", theme="monokai", line_numbers=True)
         console.print(Panel(syntax, title="Raw Data", border_style="blue"))
@@ -482,11 +492,11 @@ def lookup(
         result = await checker.lookup_domain(domain, method, dig_record_type)
         
         if output_format == "plain":
-            display_domain_info_plain(result)
+            display_domain_info_plain(result, show_raw)
         elif output_format == "json":
-            display_domain_info_json(result)
+            display_domain_info_json(result, show_raw)
         else:  # rich
-            display_domain_info(result)
+            display_domain_info(result, show_raw)
     
     asyncio.run(_lookup())
 
@@ -588,6 +598,7 @@ def dig(
     domain: str = typer.Argument(..., help="Domain name to lookup"),
     record_type: str = typer.Option("ANY", "--record", "-r", help="DNS record type: A, AAAA, MX, NS, SOA, TXT, ANY"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
+    show_raw: bool = typer.Option(False, "--raw", help="Show raw data"),
     output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Perform DIG lookup for a domain"""
@@ -596,11 +607,11 @@ def dig(
         result = await checker.dig_lookup(domain, record_type)
         
         if output_format == "plain":
-            display_domain_info_plain(result)
+            display_domain_info_plain(result, show_raw)
         elif output_format == "json":
-            display_domain_info_json(result)
+            display_domain_info_json(result, show_raw)
         else:  # rich
-            display_domain_info(result)
+            display_domain_info(result, show_raw)
     
     asyncio.run(_dig())
 
@@ -609,6 +620,7 @@ def dig(
 def reverse(
     ip: str = typer.Argument(..., help="IP address to lookup"),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
+    show_raw: bool = typer.Option(False, "--raw", help="Show raw data"),
     output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, or json"),
 ):
     """Perform reverse DNS lookup for an IP address"""
@@ -617,11 +629,11 @@ def reverse(
         result = await checker.reverse_lookup(ip)
         
         if output_format == "plain":
-            display_domain_info_plain(result)
+            display_domain_info_plain(result, show_raw)
         elif output_format == "json":
-            display_domain_info_json(result)
+            display_domain_info_json(result, show_raw)
         else:  # rich
-            display_domain_info(result)
+            display_domain_info(result, show_raw)
     
     asyncio.run(_reverse())
 
