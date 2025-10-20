@@ -66,6 +66,18 @@ pipx install -e .
 pip install pytest black flake8 mypy
 ```
 
+### Post-Installation Setup
+
+After installation, you may need to update your PATH:
+
+```bash
+# Add pipx to your PATH (if not already there)
+pipx ensurepath
+
+# Restart your terminal or source your shell config
+source ~/.bashrc  # or ~/.zshrc
+```
+
 ### Verification
 
 After installation, verify everything works:
@@ -742,7 +754,10 @@ except DomainLookupError as e:
 ```
 ❌ domch: command not found
 ```
-**Solution**: Reinstall with pipx: `pipx reinstall domain-checker`
+**Solution**: 
+1. First, ensure pipx is in your PATH: `pipx ensurepath`
+2. Restart your terminal or run: `source ~/.bashrc` (or `~/.zshrc`)
+3. If still not found, reinstall: `pipx reinstall domain-checker`
 
 ### Performance Issues
 
