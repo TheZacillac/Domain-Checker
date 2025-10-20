@@ -29,24 +29,58 @@ class DigClient:
             DomainInfo object with parsed DIG data
         """
         try:
-            # Run DIG command in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
-            dig_output = await loop.run_in_executor(
-                None, self._sync_dig_lookup, domain, record_type
-            )
             
-            # Also get authoritative name servers (unless we're already querying NS)
-            auth_nameservers = []
-            if record_type.upper() != "NS":
+            # If ANY is requested, query multiple record types
+            if record_type.upper() == "ANY":
+                record_types = ["A", "AAAA", "MX", "NS", "SOA", "TXT", "CNAME"]
+                all_records = []
+                
+                # Query each record type
+                for rt in record_types:
+                    try:
+                        output = await loop.run_in_executor(
+                            None, self._sync_dig_lookup, domain, rt
+                        )
+                        if output.strip():
+                            all_records.append(f"=== {rt} Records ===")
+                            all_records.append(output.strip())
+                    except:
+                        pass  # Skip failed record types
+                
+                # Combine all records
+                dig_output = "\n".join(all_records) if all_records else ""
+                
+                # Get authoritative name servers
+                auth_nameservers = []
                 try:
                     ns_output = await loop.run_in_executor(
                         None, self._sync_dig_lookup, domain, "NS"
                     )
                     auth_nameservers = self._parse_ns_records(ns_output)
                 except:
-                    pass  # If NS lookup fails, continue without auth nameservers
+                    pass
+                
+                return self._parse_dig_data(domain, dig_output, "ANY", auth_nameservers)
             
-            return self._parse_dig_data(domain, dig_output, record_type, auth_nameservers)
+            else:
+                # Single record type lookup
+                dig_output = await loop.run_in_executor(
+                    None, self._sync_dig_lookup, domain, record_type
+                )
+                
+                # Also get authoritative name servers (unless we're already querying NS)
+                auth_nameservers = []
+                if record_type.upper() != "NS":
+                    try:
+                        ns_output = await loop.run_in_executor(
+                            None, self._sync_dig_lookup, domain, "NS"
+                        )
+                        auth_nameservers = self._parse_ns_records(ns_output)
+                    except:
+                        pass
+                
+                return self._parse_dig_data(domain, dig_output, record_type, auth_nameservers)
             
         except Exception as e:
             return DomainInfo(
@@ -177,15 +211,21 @@ class DigClient:
         """Parse DIG output into structured records"""
         records = []
         lines = dig_output.strip().split('\n')
+        current_record_type = record_type
         
         for line in lines:
             if not line.strip():
                 continue
             
+            # Check if this is a section header
+            if line.startswith("=== ") and line.endswith(" Records ==="):
+                current_record_type = line.replace("=== ", "").replace(" Records ===", "")
+                continue
+            
             # Parse different record formats
             if record_type.upper() == "ANY":
-                # Parse ANY record type
-                record = self._parse_any_record(line)
+                # Parse ANY record type with current section type
+                record = self._parse_specific_record(line, current_record_type)
             else:
                 # Parse specific record type
                 record = self._parse_specific_record(line, record_type)

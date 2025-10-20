@@ -5,6 +5,24 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-10-19
+
+### Added
+- Comprehensive DIG ANY record support - now returns ALL DNS record types
+- Multi-record type queries for complete domain analysis
+- Organized output with section headers for each record type (A, AAAA, MX, NS, SOA, TXT, CNAME)
+- Enhanced DNS information coverage including IPv6, mail servers, and verification records
+
+### Changed
+- DIG ANY queries now perform multiple record type lookups instead of single query
+- Improved DIG output format with clear section separation
+- Enhanced MCP server with updated DIG functionality
+- Better error handling for failed record type queries
+
+### Fixed
+- DIG ANY queries now return comprehensive DNS information instead of single A record
+- Resolved DNS server blocking issues with ANY queries by using multiple specific queries
+
 ## [1.0.3] - 2025-10-19
 
 ### Added
