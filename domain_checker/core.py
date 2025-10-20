@@ -386,3 +386,62 @@ class DomainChecker:
         
         # If we have some data but can't determine clearly
         return "possibly_registered"
+    
+    async def lookup_domain_with_ns(self, 
+                                   domain: str, 
+                                   record_type: str = "A",
+                                   nameserver: str = None) -> LookupResult:
+        """
+        Lookup a domain using a specific nameserver
+        
+        Args:
+            domain: Domain name to lookup
+            record_type: DNS record type (A, AAAA, MX, NS, SOA, TXT, ANY)
+            nameserver: Specific nameserver to query (IP or hostname)
+            
+        Returns:
+            LookupResult with DNS data
+        """
+        start_time = time.time()
+        
+        try:
+            # Use dig client with specific nameserver
+            if nameserver:
+                # Create a custom dig client with the specified nameserver
+                from .dig_client import DigClient
+                custom_dig_client = DigClient(timeout=self.timeout)
+                
+                # Perform lookup with specific nameserver
+                raw_data = await custom_dig_client.query_with_nameserver(domain, record_type, nameserver)
+            else:
+                # Fallback to regular dig lookup
+                raw_data = await self.dig_client.query(domain, record_type)
+            
+            lookup_time = time.time() - start_time
+            
+            # Parse the raw data to extract records
+            domain_info = DomainInfo(
+                domain=domain,
+                source="dig",
+                raw_data=raw_data
+            )
+            
+            return LookupResult(
+                domain=domain,
+                success=True,
+                method="dig",
+                lookup_time=lookup_time,
+                data=domain_info,
+                registration_status="registered"
+            )
+            
+        except Exception as e:
+            lookup_time = time.time() - start_time
+            return LookupResult(
+                domain=domain,
+                success=False,
+                method="dig",
+                lookup_time=lookup_time,
+                error=str(e),
+                registration_status="unknown"
+            )

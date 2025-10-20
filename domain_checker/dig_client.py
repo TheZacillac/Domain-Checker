@@ -363,3 +363,54 @@ class DigClient:
             raw_data=dig_output,
             source="dig"
         )
+    
+    async def query_with_nameserver(self, domain: str, record_type: str, nameserver: str) -> str:
+        """
+        Perform DIG lookup using a specific nameserver
+        
+        Args:
+            domain: Domain name to lookup
+            record_type: DNS record type (A, AAAA, MX, NS, SOA, TXT, ANY, etc.)
+            nameserver: Specific nameserver to query (IP or hostname)
+            
+        Returns:
+            Raw DIG output as string
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            dig_output = await loop.run_in_executor(
+                None, self._sync_dig_lookup_with_ns, domain, record_type, nameserver
+            )
+            return dig_output
+            
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    def _sync_dig_lookup_with_ns(self, domain: str, record_type: str, nameserver: str) -> str:
+        """Synchronous DIG lookup with specific nameserver"""
+        try:
+            # Build DIG command with specific nameserver
+            if record_type.upper() == "ANY":
+                cmd = ["dig", "+short", "+noall", "+answer", f"@{nameserver}", domain]
+            else:
+                cmd = ["dig", "+short", "+noall", "+answer", f"@{nameserver}", domain, record_type.upper()]
+            
+            # Execute DIG command
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout
+            )
+            
+            if result.returncode != 0:
+                raise DigError(domain, f"DIG command failed with {nameserver}: {result.stderr}")
+            
+            return result.stdout
+            
+        except subprocess.TimeoutExpired:
+            raise DigError(domain, f"DIG lookup with {nameserver} timed out after {self.timeout} seconds")
+        except FileNotFoundError:
+            raise DigError(domain, "DIG command not found. Please install dig (bind-utils)")
+        except Exception as e:
+            raise DigError(domain, f"DIG lookup with {nameserver} failed: {str(e)}")
