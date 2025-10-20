@@ -13,6 +13,7 @@ An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a be
 - **Multiple Output Formats**: Rich (default), Plain, JSON, and CSV formats
 - **Copy/Paste Friendly**: Plain text output without formatting or colors
 - **Beautiful CLI**: Rich, colorful terminal interface with tables and panels
+- **User-Friendly GUI**: Easy-to-use graphical interface for non-technical users
 - **MCP Server**: Connect via Model Context Protocol
 - **Configurable**: Extensive configuration options
 - **Error Handling**: Robust error handling and validation
@@ -97,7 +98,22 @@ domch interactive
 
 ## Quick Start
 
-### CLI Usage
+### GUI Usage (Recommended for Non-Technical Users)
+
+Launch the user-friendly graphical interface:
+
+```bash
+domch gui
+```
+
+The GUI provides:
+- **🔍 Domain Lookup**: Simple form to check single domains
+- **📋 Bulk Check**: Check multiple domains at once
+- **⚙️ Settings**: Configure preferences
+- **❓ Help**: Built-in documentation
+- **ℹ️ About**: Version and credit information
+
+### CLI Usage (For Technical Users)
 
 ```bash
 # Lookup a single domain
@@ -271,6 +287,20 @@ Start interactive mode for repeated lookups.
 domch interactive
 ```
 
+### `gui`
+Launch the user-friendly graphical interface.
+
+```bash
+domch gui
+```
+
+**Features:**
+- Easy-to-use form-based interface
+- Tabbed navigation (Domain Lookup, Bulk Check, Settings, Help, About)
+- Real-time results display
+- Built-in help and documentation
+- No command-line knowledge required
+
 ### `about`
 Show version information and credits.
 
@@ -299,6 +329,62 @@ domch about
 │ License: MIT           │
 └────────────────────────┘
 ```
+
+## GUI Interface
+
+Domain Checker includes a user-friendly graphical interface that makes domain checking accessible to non-technical users.
+
+### Launching the GUI
+
+```bash
+domch gui
+```
+
+### GUI Features
+
+#### 🔍 Domain Lookup Tab
+- Simple form to enter domain names
+- Dropdown to select lookup method (Auto, WHOIS, RDAP, DIG)
+- Real-time results display with emojis and formatting
+- Easy-to-read information layout
+
+#### 📋 Bulk Check Tab
+- Text area to enter multiple domains (one per line)
+- Configurable concurrent lookups
+- Results table with status indicators
+- Summary statistics
+
+#### ⚙️ Settings Tab
+- **General**: Default method, timeout, concurrent lookups
+- **Display**: Show emojis, raw data, auto-scroll, colorize
+- **Advanced**: Rate limiting, user agent
+
+#### ❓ Help Tab
+- **Getting Started**: Basic usage instructions
+- **Methods**: Explanation of WHOIS, RDAP, DIG
+- **Troubleshooting**: Common issues and solutions
+
+#### ℹ️ About Tab
+- Version information
+- Feature list
+- Credits and license
+- Repository links
+
+### GUI Benefits
+
+- **No Command Line Knowledge Required**: Point-and-click interface
+- **Visual Feedback**: Emojis and colors make results easy to understand
+- **Built-in Help**: Documentation is integrated into the interface
+- **Error Handling**: User-friendly error messages
+- **Settings Management**: Easy configuration without editing files
+
+### Keyboard Shortcuts
+
+- `Tab` / `Shift+Tab`: Navigate between fields
+- `Enter`: Submit forms or activate buttons
+- `Ctrl+C` / `Q`: Quit the application
+- `F1` / `Ctrl+H`: Show help
+- `Ctrl+Tab`: Switch between tabs
 
 ## Output Formats
 

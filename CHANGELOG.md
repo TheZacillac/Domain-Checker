@@ -5,6 +5,34 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2025-01-27
+
+### Added
+- **User-Friendly GUI**: Complete graphical interface using Textual framework
+- **GUI Command**: New `domch gui` command to launch the graphical interface
+- **Tabbed Interface**: Domain Lookup, Bulk Check, Settings, Help, and About tabs
+- **Form-Based Input**: Easy-to-use forms for domain entry and configuration
+- **Real-Time Results**: Live results display with emojis and formatting
+- **Built-in Help**: Integrated documentation and troubleshooting guides
+- **Settings Management**: GUI-based configuration without editing files
+- **Keyboard Navigation**: Full keyboard support with shortcuts
+- **Visual Feedback**: Emojis, colors, and status indicators for easy understanding
+
+### Features
+- **Domain Lookup Tab**: Simple form for single domain lookups with method selection
+- **Bulk Check Tab**: Multi-domain checking with results table and summary
+- **Settings Tab**: General, Display, and Advanced configuration options
+- **Help Tab**: Getting Started, Methods explanation, and Troubleshooting guides
+- **About Tab**: Version info, features, credits, and repository links
+- **No CLI Knowledge Required**: Perfect for non-technical users
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+
+### Changed
+- Updated CLI help to mention GUI option
+- Enhanced about command to show GUI usage
+- Updated README with comprehensive GUI documentation
+- Added Textual dependency for GUI framework
+
 ## [1.3.1] - 2025-01-27
 
 ### Fixed

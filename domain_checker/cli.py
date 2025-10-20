@@ -970,6 +970,19 @@ def update(
 
 
 @app.command()
+def gui():
+    """Launch the user-friendly graphical interface"""
+    try:
+        from .gui import run_gui
+        run_gui()
+    except ImportError as e:
+        console.print(f"[red]❌ GUI not available: {e}[/red]")
+        console.print("[yellow]Make sure textual is installed: pip install textual[/yellow]")
+    except Exception as e:
+        console.print(f"[red]❌ Error launching GUI: {e}[/red]")
+
+
+@app.command()
 def about():
     """Show version information and credits"""
     from . import __version__
@@ -987,10 +1000,15 @@ def about():
 • DNS propagation checking
 • Bulk domain processing
 • Beautiful CLI interface
+• User-friendly GUI interface
 • MCP server integration
 
 [bold]Repository:[/bold] [link=https://github.com/TheZacillac/domain-checker]https://github.com/TheZacillac/domain-checker[/link]
 [bold]License:[/bold] MIT
+
+[bold]Usage:[/bold]
+• CLI: [cyan]domch lookup example.com[/cyan]
+• GUI: [cyan]domch gui[/cyan] (user-friendly interface)
 
 [dim]Use 'domch --help' to see available commands[/dim]"""
     
