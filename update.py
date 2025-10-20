@@ -34,7 +34,11 @@ async def main():
         
         response = input("\nDo you want to update now? (y/N): ").strip().lower()
         if response in ['y', 'yes']:
-            success = await updater.update_installation()
+            # Ask about auto-reinstall
+            reinstall_response = input("Automatically reinstall package if needed? (Y/n): ").strip().lower()
+            auto_reinstall = reinstall_response not in ['n', 'no']
+            
+            success = await updater.update_installation(auto_reinstall=auto_reinstall)
             if success:
                 print("✅ Update completed successfully!")
             else:

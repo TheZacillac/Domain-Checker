@@ -571,7 +571,8 @@ def interactive():
 def update(
     force: bool = typer.Option(False, "--force", "-f", help="Force update even if no changes detected"),
     check_only: bool = typer.Option(False, "--check", "-c", help="Only check for updates, don't install"),
-    rollback: Optional[str] = typer.Option(None, "--rollback", "-r", help="Rollback to specified version")
+    rollback: Optional[str] = typer.Option(None, "--rollback", "-r", help="Rollback to specified version"),
+    no_auto_reinstall: bool = typer.Option(False, "--no-auto-reinstall", help="Don't automatically reinstall package after update")
 ):
     """Update domain checker from repository"""
     async def _update():
@@ -594,7 +595,7 @@ def update(
             else:
                 console.print("[green]✅ You're running the latest version![/green]")
         else:
-            await updater.update_installation(force=force)
+            await updater.update_installation(force=force, auto_reinstall=not no_auto_reinstall)
     
     asyncio.run(_update())
 

@@ -164,12 +164,13 @@ class DomainCheckerUpdater:
             # Fallback: assume we're in the project directory
             return Path(__file__).parent
     
-    async def update_installation(self, force: bool = False) -> bool:
+    async def update_installation(self, force: bool = False, auto_reinstall: bool = True) -> bool:
         """
         Update the installation from the repository
         
         Args:
             force: Force update even if no changes detected
+            auto_reinstall: Automatically reinstall package if Python files are updated
             
         Returns:
             True if update was successful
@@ -295,8 +296,43 @@ class DomainCheckerUpdater:
             
             console.print(Panel(result_text, title="Update Results", border_style="green"))
             
-            # Suggest reinstallation if needed
-            if any(f.endswith('.py') for f in updated_files):
+            # Auto-reinstall if Python files were updated and auto_reinstall is enabled
+            if auto_reinstall and any(f.endswith('.py') for f in updated_files):
+                console.print("\n[yellow]⚠️  Python files were updated. Reinstalling package...[/yellow]")
+                
+                try:
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        console=console
+                    ) as progress:
+                        task = progress.add_task("Reinstalling package...", total=None)
+                        
+                        # Run pip install -e . in the project directory
+                        result = subprocess.run(
+                            ["pip3", "install", "-e", "."],
+                            cwd=project_root,
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+                        
+                        if result.returncode == 0:
+                            progress.update(task, description="Package reinstalled successfully")
+                            console.print("[green]✅ Package reinstalled successfully![/green]")
+                        else:
+                            progress.update(task, description="Reinstallation failed")
+                            console.print(f"[red]❌ Reinstallation failed: {result.stderr}[/red]")
+                            console.print("[yellow]You may need to manually run: pip3 install -e .[/yellow]")
+                            
+                except subprocess.TimeoutExpired:
+                    console.print("[red]❌ Reinstallation timed out[/red]")
+                    console.print("[yellow]You may need to manually run: pip3 install -e .[/yellow]")
+                except Exception as e:
+                    console.print(f"[red]❌ Reinstallation failed: {e}[/red]")
+                    console.print("[yellow]You may need to manually run: pip3 install -e .[/yellow]")
+            elif any(f.endswith('.py') for f in updated_files):
+                # Python files were updated but auto_reinstall is disabled
                 console.print("\n[yellow]⚠️  Python files were updated. You may need to reinstall the package:[/yellow]")
                 console.print("[cyan]pip3 install -e .[/cyan]")
             
