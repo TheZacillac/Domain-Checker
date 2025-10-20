@@ -973,9 +973,14 @@ def update(
 def about():
     """Show version information and credits"""
     from . import __version__
+    from datetime import datetime
+    
+    # Get current date in MM/DD/YYYY format
+    current_date = datetime.now().strftime("%m/%d/%Y")
     
     # Create a beautiful about panel
     about_text = f"""[bold blue]Domain Checker[/bold blue] v[bold green]{__version__}[/bold green]
+[dim]Updated: {current_date}[/dim]
 
 [bold]Created by:[/bold] [cyan]Zac Roach[/cyan]
 
