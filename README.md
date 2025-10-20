@@ -1010,6 +1010,27 @@ For issues and questions:
 - Check the documentation
 - Review the examples
 
+## Updater
+
+The `domch update` command keeps your installation current.
+
+### Normal update
+```bash
+domch update
+```
+- Checks latest release and recent commits on `main`
+- If already up to date, suggests using `--force` if desired
+
+### Force update to latest commit on main
+```bash
+domch update --force
+```
+- Skips version checks and pulls the absolute latest commit from `main`
+- Performs a fetch+hard reset to ensure newest code
+- Shows pulled commit hash/message/date for verification
+
+This behavior ensures you can always update even when no new release was cut yet.
+
 ## Changelog
 
 ### v1.0.0
