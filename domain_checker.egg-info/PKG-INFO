@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: domain-checker
-Version: 1.0.6
+Version: 1.0.7
 Summary: Asynchronous domain checker with WHOIS and RDAP support
 Author-email: Domain Checker <domain@example.com>
 License: MIT
@@ -68,7 +68,7 @@ domch dig example.com --record NS
 domch reverse 8.8.8.8
 
 # Check DNS propagation across regional ISPs
-domch propagation example.com --record A
+domch prop example.com --record A
 
 # Bulk lookup with DIG
 domch bulk example.com google.com --method dig --dig-record A

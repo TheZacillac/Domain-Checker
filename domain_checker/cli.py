@@ -346,7 +346,7 @@ def reverse(
 
 
 @app.command()
-def propagation(
+def prop(
     domain: str = typer.Argument(..., help="Domain name to check"),
     record_type: str = typer.Option("A", "--record", "-r", help="DNS record type: A, AAAA, MX, NS"),
     timeout: int = typer.Option(10, "--timeout", "-t", help="Timeout in seconds"),

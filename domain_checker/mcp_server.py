@@ -634,7 +634,7 @@ class DomainCheckerMCPServer:
                 write_stream,
                 InitializationOptions(
                     server_name="domain-checker",
-                        server_version="1.0.6",
+                        server_version="1.0.7",
                     capabilities=self.server.get_capabilities(
                         notification_options=None,
                         experimental_capabilities=None

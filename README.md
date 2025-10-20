@@ -49,7 +49,7 @@ domch dig example.com --record NS
 domch reverse 8.8.8.8
 
 # Check DNS propagation across regional ISPs
-domch propagation example.com --record A
+domch prop example.com --record A
 
 # Bulk lookup with DIG
 domch bulk example.com google.com --method dig --dig-record A
