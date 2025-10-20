@@ -600,6 +600,41 @@ def update(
     asyncio.run(_update())
 
 
+@app.command()
+def about():
+    """Show version information and credits"""
+    from . import __version__
+    
+    # Create a beautiful about panel
+    about_text = f"""[bold blue]Domain Checker[/bold blue] v[bold green]{__version__}[/bold green]
+
+[bold]Created by:[/bold] [cyan]Zac Roach[/cyan]
+
+[bold]Description:[/bold] Asynchronous domain checker with WHOIS, RDAP, and DIG support
+
+[bold]Features:[/bold]
+• Fast asynchronous domain lookups
+• WHOIS, RDAP, and DIG protocol support
+• DNS propagation checking
+• Bulk domain processing
+• Beautiful CLI interface
+• MCP server integration
+
+[bold]Repository:[/bold] [link=https://github.com/TheZacillac/domain-checker]https://github.com/TheZacillac/domain-checker[/link]
+[bold]License:[/bold] MIT
+
+[dim]Use 'domch --help' to see available commands[/dim]"""
+    
+    panel = Panel(
+        about_text,
+        title="[bold blue]About Domain Checker[/bold blue]",
+        border_style="blue",
+        padding=(1, 2)
+    )
+    
+    console.print(panel)
+
+
 def main():
     """Main entry point"""
     app()

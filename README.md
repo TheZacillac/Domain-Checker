@@ -236,6 +236,35 @@ Start interactive mode for repeated lookups.
 domch interactive
 ```
 
+### `about`
+Show version information and credits.
+
+```bash
+domch about
+```
+
+**Example Output:**
+```
+┌─ About Domain Checker ─┐
+│ Domain Checker v1.1.0  │
+│                        │
+│ Created by: Zac Roach  │
+│                        │
+│ Description: Asynchronous domain checker with WHOIS, RDAP, and DIG support │
+│                        │
+│ Features:              │
+│ • Fast asynchronous domain lookups │
+│ • WHOIS, RDAP, and DIG protocol support │
+│ • DNS propagation checking │
+│ • Bulk domain processing │
+│ • Beautiful CLI interface │
+│ • MCP server integration │
+│                        │
+│ Repository: https://github.com/TheZacillac/domain-checker │
+│ License: MIT           │
+└────────────────────────┘
+```
+
 ## API Reference
 
 ### DomainChecker
