@@ -17,6 +17,7 @@ from datetime import datetime
 
 from .core import DomainChecker
 from .models import LookupResult, BulkLookupResult
+from .updater import DomainCheckerUpdater
 
 app = typer.Typer(
     name="domain-check",
@@ -178,11 +179,17 @@ def display_domain_info(result: LookupResult):
 
 def display_bulk_results(results: BulkLookupResult):
     """Display bulk lookup results"""
+    # Count registration statuses
+    registered_count = sum(1 for r in results.results if r.registration_status == "registered")
+    not_registered_count = sum(1 for r in results.results if r.registration_status == "not_registered")
+    possibly_registered_count = sum(1 for r in results.results if r.registration_status == "possibly_registered")
+    
     # Summary panel
     summary_text = f"""
 [bold blue]Total Domains:[/bold blue] {results.total_domains}
-[bold green]Successful:[/bold green] {results.successful_lookups}
-[bold red]Failed:[/bold red] {results.failed_lookups}
+[bold green]✅ Registered:[/bold green] {registered_count}
+[bold red]❌ Not Registered:[/bold red] {not_registered_count}
+[bold yellow]⚠️ Possibly Registered:[/bold yellow] {possibly_registered_count}
 [bold blue]Total Time:[/bold blue] {results.total_time:.2f}s
 [bold blue]Average per Domain:[/bold blue] {results.average_time_per_domain:.2f}s
 """
@@ -192,13 +199,23 @@ def display_bulk_results(results: BulkLookupResult):
     # Results table
     results_table = Table(title="[bold]Results[/bold]", box=box.ROUNDED)
     results_table.add_column("Domain", style="cyan")
-    results_table.add_column("Status", style="green")
+    results_table.add_column("Registration Status", style="green")
     results_table.add_column("Method", style="yellow")
     results_table.add_column("Time", style="blue")
     results_table.add_column("Registrar", style="magenta")
     
     for result in results.results:
-        status = "✅ Success" if result.success else "❌ Failed"
+        # Determine status display based on registration status
+        if result.registration_status == "registered":
+            status = "✅ Registered"
+        elif result.registration_status == "not_registered":
+            status = "❌ Not Registered"
+        elif result.registration_status == "possibly_registered":
+            status = "⚠️ Possibly Registered"
+        else:
+            # Fallback to success/failure if no registration status
+            status = "✅ Success" if result.success else "❌ Failed"
+        
         method = result.method.upper() if result.method else "N/A"
         time_str = f"{result.lookup_time:.2f}s"
         registrar = result.data.registrar if result.data and result.data.registrar else "N/A"
@@ -548,6 +565,38 @@ def interactive():
             break
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
+
+
+@app.command()
+def update(
+    force: bool = typer.Option(False, "--force", "-f", help="Force update even if no changes detected"),
+    check_only: bool = typer.Option(False, "--check", "-c", help="Only check for updates, don't install"),
+    rollback: Optional[str] = typer.Option(None, "--rollback", "-r", help="Rollback to specified version")
+):
+    """Update domain checker from repository"""
+    async def _update():
+        updater = DomainCheckerUpdater()
+        
+        if rollback:
+            updater.rollback(rollback)
+            return
+        
+        if check_only:
+            has_updates, latest_version, update_info = await updater.check_for_updates()
+            
+            if has_updates:
+                console.print(f"[yellow]Update available: {latest_version}[/yellow]")
+                if update_info:
+                    if "release_notes" in update_info:
+                        console.print(f"[dim]Release Notes: {update_info['release_notes'][:200]}...[/dim]")
+                    if "commit_message" in update_info:
+                        console.print(f"[dim]Latest Commit: {update_info['commit_message'][:100]}...[/dim]")
+            else:
+                console.print("[green]✅ You're running the latest version![/green]")
+        else:
+            await updater.update_installation(force=force)
+    
+    asyncio.run(_update())
 
 
 def main():

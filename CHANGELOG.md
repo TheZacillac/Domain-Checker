@@ -5,6 +5,25 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-10-19
+
+### Added
+- Enhanced bulk domain checking with meaningful registration status
+- Three distinct registration statuses: "registered", "not_registered", "possibly_registered"
+- Smart registration status detection based on domain information, error messages, and raw data
+- Updated bulk results display with registration status counts and emoji indicators
+
+### Changed
+- Bulk lookup results now show "Registration Status" instead of generic "Success/Failed"
+- Summary panel displays counts for each registration status type
+- Results table uses intuitive status indicators (✅ Registered, ❌ Not Registered, ⚠️ Possibly Registered)
+- Enhanced registration detection patterns for better accuracy
+
+### Fixed
+- Improved detection of non-registered domains with "no whois data available" messages
+- Better handling of various "not found" error patterns across different WHOIS servers
+- More accurate registration status determination for edge cases
+
 ## [1.0.4] - 2025-10-19
 
 ### Added

@@ -33,6 +33,7 @@ class LookupResult(BaseModel):
     error: Optional[str] = None
     lookup_time: float
     method: str  # "whois" or "rdap"
+    registration_status: Optional[str] = None  # "registered", "not_registered", or "possibly_registered"
 
 
 class BulkLookupResult(BaseModel):

@@ -2,7 +2,7 @@
 Domain Checker - Asynchronous domain lookup with WHOIS and RDAP support
 """
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __author__ = "Domain Checker"
 __email__ = "domain@example.com"
 
@@ -12,10 +12,12 @@ from .whois_client import WhoisClient
 from .rdap_client import RdapClient
 from .dig_client import DigClient
 from .propagation_checker import DNSPropagationChecker, PropagationResult, PropagationSummary
+from .updater import DomainCheckerUpdater
+from .update_checker import UpdateChecker, quick_check
 
 __all__ = [
     "DomainChecker",
-    "DomainInfo", 
+    "DomainInfo",
     "LookupResult",
     "WhoisClient",
     "RdapClient",
@@ -23,4 +25,7 @@ __all__ = [
     "DNSPropagationChecker",
     "PropagationResult",
     "PropagationSummary",
+    "DomainCheckerUpdater",
+    "UpdateChecker",
+    "quick_check",
 ]

@@ -64,73 +64,85 @@ class DomainChecker:
                         domain_info = await self.rdap_client.lookup(domain)
                         if domain_info.raw_data and "Error:" not in domain_info.raw_data:
                             lookup_time = time.time() - start_time
-                            return LookupResult(
+                            result = LookupResult(
                                 domain=domain,
                                 success=True,
                                 data=domain_info,
                                 lookup_time=lookup_time,
                                 method="rdap"
                             )
+                            result.registration_status = self._determine_registration_status(result)
+                            return result
                 except Exception:
                     pass
                 
                 # Fallback to WHOIS
                 domain_info = await self.whois_client.lookup(domain)
                 lookup_time = time.time() - start_time
-                return LookupResult(
+                result = LookupResult(
                     domain=domain,
                     success=True,
                     data=domain_info,
                     lookup_time=lookup_time,
                     method="whois"
                 )
+                result.registration_status = self._determine_registration_status(result)
+                return result
             
             elif method == "rdap":
                 async with self.rdap_client:
                     domain_info = await self.rdap_client.lookup(domain)
                     lookup_time = time.time() - start_time
-                    return LookupResult(
+                    result = LookupResult(
                         domain=domain,
                         success=True,
                         data=domain_info,
                         lookup_time=lookup_time,
                         method="rdap"
                     )
+                    result.registration_status = self._determine_registration_status(result)
+                    return result
             
             elif method == "whois":
                 domain_info = await self.whois_client.lookup(domain)
                 lookup_time = time.time() - start_time
-                return LookupResult(
+                result = LookupResult(
                     domain=domain,
                     success=True,
                     data=domain_info,
                     lookup_time=lookup_time,
                     method="whois"
                 )
+                result.registration_status = self._determine_registration_status(result)
+                return result
             
             elif method == "dig":
                 domain_info = await self.dig_client.lookup(domain, dig_record_type)
                 lookup_time = time.time() - start_time
-                return LookupResult(
+                result = LookupResult(
                     domain=domain,
                     success=True,
                     data=domain_info,
                     lookup_time=lookup_time,
                     method="dig"
                 )
+                result.registration_status = self._determine_registration_status(result)
+                return result
             
             else:
                 raise ValueError(f"Unknown method: {method}")
                 
         except Exception as e:
             lookup_time = time.time() - start_time
-            return LookupResult(
+            result = LookupResult(
                 domain=domain,
                 success=False,
                 error=str(e),
                 lookup_time=lookup_time,
                 method=method
             )
+            result.registration_status = self._determine_registration_status(result)
+            return result
     
     async def lookup_domains_bulk(self, 
                                  domains: List[str], 
@@ -166,13 +178,15 @@ class DomainChecker:
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                processed_results.append(LookupResult(
+                lookup_result = LookupResult(
                     domain=domains[i],
                     success=False,
                     error=str(result),
                     lookup_time=0.0,
                     method=method
-                ))
+                )
+                lookup_result.registration_status = self._determine_registration_status(lookup_result)
+                processed_results.append(lookup_result)
             else:
                 processed_results.append(result)
         
@@ -306,3 +320,65 @@ class DomainChecker:
                 }
             }
         }
+    
+    def _determine_registration_status(self, result: LookupResult) -> str:
+        """
+        Determine the registration status of a domain based on lookup results
+        
+        Args:
+            result: LookupResult from domain lookup
+            
+        Returns:
+            Registration status: "registered", "not_registered", or "possibly_registered"
+        """
+        if not result.success or not result.data:
+            return "not_registered"
+        
+        domain_info = result.data
+        
+        # Check for clear indicators of registration
+        if domain_info.registrar:
+            return "registered"
+        
+        if domain_info.creation_date:
+            return "registered"
+        
+        if domain_info.expiration_date:
+            return "registered"
+        
+        if domain_info.name_servers:
+            return "registered"
+        
+        # Check for indicators of non-registration
+        if result.error:
+            error_lower = result.error.lower()
+            if any(phrase in error_lower for phrase in [
+                "no match", "not found", "no entries found", 
+                "no data found", "domain not found", "not registered",
+                "no whois data available", "no information available"
+            ]):
+                return "not_registered"
+        
+        # Check raw data for registration indicators
+        if domain_info.raw_data:
+            raw_lower = domain_info.raw_data.lower()
+            
+            # Clear indicators of registration
+            if any(phrase in raw_lower for phrase in [
+                "registrar:", "creation date:", "expiration date:",
+                "name server:", "status: active", "status: ok",
+                "domain name:", "registry domain id:"
+            ]):
+                return "registered"
+            
+            # Clear indicators of non-registration
+            if any(phrase in raw_lower for phrase in [
+                "no match", "not found", "no entries found",
+                "no data found", "domain not found", "not registered",
+                "no whois data available", "no information available",
+                "no data available"
+            ]):
+                return "not_registered"
+        
+        # If we have some data but can't determine clearly
+        return "possibly_registered"
