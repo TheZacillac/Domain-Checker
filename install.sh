@@ -26,7 +26,15 @@ fi
 
 # Install the package
 echo "🔧 Installing domain checker..."
-pip3 install -e .
+
+# Check if pipx is available and use it, otherwise fallback to pip3
+if command -v pipx &> /dev/null; then
+    echo "📦 Using pipx for isolated installation..."
+    pipx install -e .
+else
+    echo "📦 Using pip3 for installation (with --break-system-packages)..."
+    pip3 install -e . --break-system-packages
+fi
 
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install domain checker"
@@ -42,9 +50,9 @@ if [ $? -eq 0 ]; then
     echo "✅ Domain Checker installed successfully!"
     echo ""
     echo "Usage examples:"
-    echo "  domain-check lookup example.com"
-    echo "  domain-check bulk example.com google.com"
-    echo "  domain-check interactive"
+    echo "  domch lookup example.com"
+    echo "  domch bulk example.com google.com"
+    echo "  domch interactive"
     echo "  python3 examples/basic_usage.py"
     echo ""
     echo "For more information, see README.md"

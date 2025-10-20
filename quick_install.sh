@@ -28,7 +28,15 @@ pip3 install aiohttp python-whois rich click pydantic typer mcp asyncio-throttle
 
 # Install the package
 echo "🔧 Installing domain checker..."
-pip3 install -e .
+
+# Check if pipx is available and use it, otherwise fallback to pip3
+if command -v pipx &> /dev/null; then
+    echo "📦 Using pipx for isolated installation..."
+    pipx install -e .
+else
+    echo "📦 Using pip3 for installation (with --break-system-packages)..."
+    pip3 install -e . --break-system-packages
+fi
 
 # Test installation
 echo "🧪 Testing installation..."
@@ -48,9 +56,9 @@ echo ""
 echo "✅ Domain Checker installed successfully!"
 echo ""
 echo "Usage:"
-echo "  domain-check lookup example.com"
-echo "  domain-check bulk example.com google.com"
-echo "  domain-check interactive"
+echo "  domch lookup example.com"
+echo "  domch bulk example.com google.com"
+echo "  domch interactive"
 echo ""
 echo "For Rust extensions (optional):"
 echo "  1. Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"

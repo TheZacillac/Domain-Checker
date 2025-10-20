@@ -5,6 +5,35 @@ All notable changes to the Domain Checker project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2025-10-19
+
+### Added
+- Comprehensive consolidated documentation in `DOCUMENTATION.md`
+- Complete documentation covering installation, usage, API reference, examples, and troubleshooting
+- Table of contents for easy navigation through all documentation sections
+
+### Changed
+- Consolidated 20+ separate documentation files into single comprehensive `DOCUMENTATION.md`
+- Updated README.md to point to consolidated documentation
+- Improved documentation organization and structure
+
+### Removed
+- Redundant documentation files that were consolidated:
+  - `INSTALLATION.md`, `PROJECT_SUMMARY.md`, `CHANGES_SUMMARY.md`
+  - `COMMAND_NAME_CHANGE.md`, `CONTACT_INFORMATION.md`
+  - `DIG_ANY_UPDATE.md`, `DIG_DISPLAY_UPDATE.md`, `DIG_FEATURE_SUMMARY.md`
+  - `DNS_PROPAGATION_FEATURE.md`, `FINAL_SUMMARY.md`
+  - `MCP_SERVER_UPDATE.md`, `PERFORMANCE_IMPROVEMENTS_SUMMARY.md`
+  - `PERFORMANCE_OPTIMIZATION_PLAN.md`, `RDAP_FRAMEWORK.md`
+  - `REGISTRATION_STATUS_UPDATE.md`, `RESOLVED_RECORDS_DISPLAY.md`
+  - `SPEED_OPTIMIZATIONS_FINAL.md`, `STREAMLINED_UPDATE.md`
+  - `UPDATER_DOCUMENTATION.md`, `UPDATER_SUMMARY.md`
+
+### Fixed
+- Documentation maintenance complexity reduced from 20+ files to 3 files
+- Single source of truth for all project documentation
+- Better user experience with consolidated, well-organized documentation
+
 ## [1.0.7] - 2025-10-19
 
 ### Changed

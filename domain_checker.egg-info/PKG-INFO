@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: domain-checker
-Version: 1.0.7
+Version: 1.0.8
 Summary: Asynchronous domain checker with WHOIS and RDAP support
 Author-email: Domain Checker <domain@example.com>
 License: MIT
@@ -19,7 +19,9 @@ Dynamic: license-file
 
 # Domain Checker
 
-An asynchronous domain checker with WHOIS and RDAP support, featuring a beautiful CLI interface and MCP server connectivity.
+An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a beautiful CLI interface and MCP server connectivity.
+
+> 📚 **Complete Documentation**: See [DOCUMENTATION.md](DOCUMENTATION.md) for comprehensive usage guide, API reference, examples, and troubleshooting.
 
 ## Features
 

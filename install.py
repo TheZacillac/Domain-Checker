@@ -62,9 +62,16 @@ def install_package():
     """Install the domain checker package"""
     print("🔧 Installing domain checker...")
     
-    pip_cmd = "pip" if shutil.which("pip") else "pip3"
+    # Try pipx first, then fallback to pip/pip3
+    if shutil.which("pipx"):
+        install_cmd = "pipx install -e ."
+        print("📦 Using pipx for isolated installation...")
+    else:
+        pip_cmd = "pip" if shutil.which("pip") else "pip3"
+        install_cmd = f"{pip_cmd} install -e . --break-system-packages"
+        print("📦 Using pip for installation (with --break-system-packages)...")
     
-    success, stdout, stderr = run_command(f"{pip_cmd} install -e .")
+    success, stdout, stderr = run_command(install_cmd)
     if not success:
         print(f"❌ Failed to install package: {stderr}")
         return False
@@ -119,8 +126,8 @@ def create_aliases():
         shell_configs = ["~/.bashrc", "~/.zshrc"]
     
     aliases = [
-        "alias dc='domain-check'",
-        "alias domain-checker='domain-check'",
+        "alias dc='domch'",
+        "alias domain-checker='domch'",
     ]
     
     for config_file in shell_configs:
@@ -183,9 +190,9 @@ def main():
     print("\n" + "=" * 40)
     print("✅ Domain Checker installed successfully!")
     print("\nUsage examples:")
-    print("  domain-check lookup example.com")
-    print("  domain-check bulk example.com google.com")
-    print("  domain-check interactive")
+    print("  domch lookup example.com")
+    print("  domch bulk example.com google.com")
+    print("  domch interactive")
     print("  dc lookup example.com  # (if aliases were created)")
     print("\nFor more information, see README.md")
     

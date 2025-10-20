@@ -1,6 +1,8 @@
 # Domain Checker
 
-An asynchronous domain checker with WHOIS and RDAP support, featuring a beautiful CLI interface and MCP server connectivity.
+An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a beautiful CLI interface and MCP server connectivity.
+
+> 📚 **Complete Documentation**: See [DOCUMENTATION.md](DOCUMENTATION.md) for comprehensive usage guide, API reference, examples, and troubleshooting.
 
 ## Features
 
