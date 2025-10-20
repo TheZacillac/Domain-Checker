@@ -977,7 +977,10 @@ def gui():
         run_gui()
     except ImportError as e:
         console.print(f"[red]❌ GUI not available: {e}[/red]")
-        console.print("[yellow]Make sure textual is installed: pip install textual[/yellow]")
+        console.print("[yellow]To install the GUI dependency, run one of these commands:[/yellow]")
+        console.print("[cyan]  pip install textual[/cyan]")
+        console.print("[cyan]  pipx inject domain-checker textual[/cyan]")
+        console.print("[dim]Note: If you installed with pipx, use 'pipx inject' to add dependencies[/dim]")
     except Exception as e:
         console.print(f"[red]❌ Error launching GUI: {e}[/red]")
 

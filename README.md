@@ -106,6 +106,15 @@ Launch the user-friendly graphical interface:
 domch gui
 ```
 
+**Note**: If you get an error about missing `textual`, install it with:
+```bash
+# If you installed with pipx:
+pipx inject domain-checker textual
+
+# If you installed with pip:
+pip install textual
+```
+
 The GUI provides:
 - **🔍 Domain Lookup**: Simple form to check single domains
 - **📋 Bulk Check**: Check multiple domains at once
@@ -338,6 +347,15 @@ Domain Checker includes a user-friendly graphical interface that makes domain ch
 
 ```bash
 domch gui
+```
+
+**Installation Note**: If you get an error about missing `textual`, install it with:
+```bash
+# If you installed with pipx:
+pipx inject domain-checker textual
+
+# If you installed with pip:
+pip install textual
 ```
 
 ### GUI Features

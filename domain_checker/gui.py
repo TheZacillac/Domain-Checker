@@ -508,7 +508,7 @@ class DomainCheckerGUI(App):
     }
     
     .info {
-        color: $info;
+        color: $primary;
     }
     """
     
