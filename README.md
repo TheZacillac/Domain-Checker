@@ -2,8 +2,6 @@
 
 An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a beautiful CLI interface and MCP server connectivity.
 
-> 📚 **Complete Documentation**: See [DOCUMENTATION.md](DOCUMENTATION.md) for comprehensive usage guide, API reference, examples, and troubleshooting.
-
 ## Features
 
 - **Asynchronous Processing**: Fast, non-blocking domain lookups
@@ -19,16 +17,68 @@ An asynchronous domain checker with WHOIS, RDAP, and DIG support, featuring a be
 
 ## Installation
 
+### Quick Installation
+
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/TheZacillac/domain-checker.git
 cd domain-checker
 
+# Install with pipx (recommended for isolation)
+pipx install -e .
+
+# Or install with pip
+pip install -e .
+```
+
+### Requirements
+
+- **Python 3.8+** (required)
+
+### Installation Methods
+
+#### 1. pipx Installation (Recommended)
+```bash
+# Install with pipx for isolated environment
+pipx install -e .
+
+# Or install from GitHub
+pipx install git+https://github.com/TheZacillac/domain-checker.git
+```
+
+#### 2. pip Installation
+```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Install the package
+# Install package
 pip install -e .
+```
+
+#### 3. Development Installation
+```bash
+# Clone and install in development mode
+git clone https://github.com/TheZacillac/domain-checker.git
+cd domain-checker
+pip install -e .
+
+# Install development dependencies (optional)
+pip install pytest black flake8 mypy
+```
+
+### Verification
+
+After installation, verify everything works:
+
+```bash
+# Test basic functionality
+domch lookup example.com
+
+# Test bulk lookup
+domch bulk example.com google.com
+
+# Test interactive mode
+domch interactive
 ```
 
 ## Quick Start
@@ -268,18 +318,25 @@ asyncio.run(main())
 import asyncio
 from domain_checker import DomainChecker
 
-async def check_domain():
+async def single_domain_lookup():
+    """Example: Lookup a single domain"""
     checker = DomainChecker()
     result = await checker.lookup_domain("example.com")
     
     if result.success:
-        print(f"Domain: {result.data.domain}")
-        print(f"Registrar: {result.data.registrar}")
-        print(f"Expires: {result.data.expiration_date}")
+        print(f"✅ Domain: {result.data.domain}")
+        print(f"📋 Registrar: {result.data.registrar}")
+        print(f"📅 Creation: {result.data.creation_date}")
+        print(f"⏰ Expiration: {result.data.expiration_date}")
+        print(f"🔄 Last Updated: {result.data.updated_date}")
+        print(f"📊 Status: {', '.join(result.data.status)}")
+        print(f"🌐 Name Servers: {', '.join(result.data.name_servers)}")
+        print(f"⏱️  Lookup Time: {result.lookup_time:.2f}s")
+        print(f"🔧 Method: {result.method}")
     else:
-        print(f"Error: {result.error}")
+        print(f"❌ Error: {result.error}")
 
-asyncio.run(check_domain())
+asyncio.run(single_domain_lookup())
 ```
 
 ### Bulk Processing
@@ -288,12 +345,13 @@ asyncio.run(check_domain())
 import asyncio
 from domain_checker import DomainChecker
 
-async def check_domains():
+async def bulk_domain_lookup():
+    """Example: Bulk domain lookup"""
     checker = DomainChecker(max_concurrent=5, rate_limit=2.0)
     
     domains = [
         "example.com",
-        "google.com", 
+        "google.com",
         "github.com",
         "stackoverflow.com",
         "reddit.com"
@@ -301,38 +359,21 @@ async def check_domains():
     
     results = await checker.lookup_domains_bulk(domains)
     
-    print(f"Total: {results.total_domains}")
-    print(f"Successful: {results.successful_lookups}")
-    print(f"Failed: {results.failed_lookups}")
-    print(f"Total time: {results.total_time:.2f}s")
+    print(f"📊 Summary:")
+    print(f"   Total: {results.total_domains}")
+    print(f"   Successful: {results.successful_lookups}")
+    print(f"   Failed: {results.failed_lookups}")
+    print(f"   Total Time: {results.total_time:.2f}s")
+    print(f"   Average Time: {results.average_time_per_domain:.2f}s")
     
+    print(f"\n📋 Results:")
     for result in results.results:
         if result.success:
-            print(f"{result.domain}: {result.data.registrar}")
+            print(f"   ✅ {result.domain}: {result.data.registrar} ({result.method})")
         else:
-            print(f"{result.domain}: ERROR - {result.error}")
+            print(f"   ❌ {result.domain}: {result.error}")
 
-asyncio.run(check_domains())
-```
-
-### File Processing
-
-```python
-import asyncio
-from domain_checker import DomainChecker
-
-async def check_domains_from_file():
-    checker = DomainChecker()
-    
-    # domains.txt contains one domain per line
-    results = await checker.lookup_domains_from_file("domains.txt")
-    
-    # Save results to JSON
-    import json
-    with open("results.json", "w") as f:
-        json.dump([r.dict() for r in results.results], f, indent=2, default=str)
-
-asyncio.run(check_domains_from_file())
+asyncio.run(bulk_domain_lookup())
 ```
 
 ### Method Comparison
@@ -341,17 +382,104 @@ asyncio.run(check_domains_from_file())
 import asyncio
 from domain_checker import DomainChecker
 
-async def compare_methods():
+async def method_comparison():
+    """Example: Compare WHOIS vs RDAP"""
     checker = DomainChecker()
     comparison = await checker.compare_methods("example.com")
     
-    print(f"Domain: {comparison['domain']}")
-    print(f"WHOIS Success: {comparison['whois'].success}")
-    print(f"RDAP Success: {comparison['rdap'].success}")
-    print(f"WHOIS Time: {comparison['whois'].lookup_time:.2f}s")
-    print(f"RDAP Time: {comparison['rdap'].lookup_time:.2f}s")
+    print(f"🔍 Comparing methods for: {comparison['domain']}")
+    
+    # WHOIS results
+    whois_result = comparison['whois']
+    print(f"\n📋 WHOIS:")
+    print(f"   Success: {'✅' if whois_result.success else '❌'}")
+    print(f"   Time: {whois_result.lookup_time:.2f}s")
+    if whois_result.success and whois_result.data:
+        print(f"   Registrar: {whois_result.data.registrar}")
+    
+    # RDAP results
+    rdap_result = comparison['rdap']
+    print(f"\n📋 RDAP:")
+    print(f"   Success: {'✅' if rdap_result.success else '❌'}")
+    print(f"   Time: {rdap_result.lookup_time:.2f}s")
+    if rdap_result.success and rdap_result.data:
+        print(f"   Registrar: {rdap_result.data.registrar}")
 
-asyncio.run(compare_methods())
+asyncio.run(method_comparison())
+```
+
+### File Processing
+
+```python
+import asyncio
+import json
+from domain_checker import DomainChecker
+
+async def file_processing():
+    """Example: Process domains from file"""
+    # Create a sample domains file
+    sample_domains = [
+        "example.com",
+        "google.com",
+        "github.com",
+        "stackoverflow.com",
+        "reddit.com",
+        "youtube.com",
+        "facebook.com",
+        "twitter.com"
+    ]
+    
+    with open("sample_domains.txt", "w") as f:
+        for domain in sample_domains:
+            f.write(f"{domain}\n")
+    
+    print("📁 Created sample_domains.txt")
+    
+    # Process the file
+    checker = DomainChecker(max_concurrent=3, rate_limit=1.5)
+    results = await checker.lookup_domains_from_file("sample_domains.txt")
+    
+    print(f"📊 File Processing Results:")
+    print(f"   Total: {results.total_domains}")
+    print(f"   Successful: {results.successful_lookups}")
+    print(f"   Failed: {results.failed_lookups}")
+    print(f"   Total Time: {results.total_time:.2f}s")
+    
+    # Save results to JSON
+    results_data = {
+        "summary": {
+            "total_domains": results.total_domains,
+            "successful_lookups": results.successful_lookups,
+            "failed_lookups": results.failed_lookups,
+            "total_time": results.total_time,
+            "average_time_per_domain": results.average_time_per_domain
+        },
+        "results": [
+            {
+                "domain": r.domain,
+                "success": r.success,
+                "method": r.method,
+                "lookup_time": r.lookup_time,
+                "error": r.error,
+                "data": {
+                    "registrar": r.data.registrar if r.data else None,
+                    "creation_date": r.data.creation_date.isoformat() if r.data and r.data.creation_date else None,
+                    "expiration_date": r.data.expiration_date.isoformat() if r.data and r.data.expiration_date else None,
+                    "status": r.data.status if r.data else [],
+                    "name_servers": r.data.name_servers if r.data else [],
+                    "source": r.data.source if r.data else None
+                } if r.data else None
+            }
+            for r in results.results
+        ]
+    }
+    
+    with open("results.json", "w") as f:
+        json.dump(results_data, f, indent=2, default=str)
+    
+    print("💾 Saved results to results.json")
+
+asyncio.run(file_processing())
 ```
 
 ### DIG Lookups
@@ -361,25 +489,194 @@ import asyncio
 from domain_checker import DomainChecker
 
 async def dig_examples():
+    """Examples of DIG functionality"""
     checker = DomainChecker()
     
-    # A records
+    # Example 1: Basic DIG lookup
+    print("=== Example 1: Basic DIG Lookup ===")
     result = await checker.dig_lookup("example.com", "A")
-    print(f"A Records: {result.data.raw_data}")
+    print(f"✅ A Records for example.com:")
+    print(f"   Raw Data: {result.data.raw_data}")
+    print(f"   Lookup Time: {result.lookup_time:.2f}s")
     
-    # MX records
-    result = await checker.dig_lookup("gmail.com", "MX")
-    print(f"MX Records: {result.data.raw_data}")
+    # Example 2: Different record types
+    print("\n=== Example 2: Different Record Types ===")
+    record_types = ["A", "AAAA", "MX", "NS", "TXT", "SOA"]
     
-    # NS records
-    result = await checker.dig_lookup("google.com", "NS")
-    print(f"NS Records: {result.data.raw_data}")
+    for record_type in record_types:
+        result = await checker.dig_lookup("example.com", record_type)
+        if result.success and result.data.raw_data:
+            print(f"✅ {record_type} Records:")
+            print(f"   {result.data.raw_data.strip()}")
+        else:
+            print(f"❌ {record_type} Records: No data or error")
     
-    # Reverse DNS
-    result = await checker.reverse_lookup("8.8.8.8")
-    print(f"8.8.8.8 -> {result.data.domain}")
+    # Example 3: Reverse DNS lookup
+    print("\n=== Example 3: Reverse DNS Lookup ===")
+    ips = ["8.8.8.8", "1.1.1.1", "208.67.222.222"]
+    
+    for ip in ips:
+        result = await checker.reverse_lookup(ip)
+        if result.success and result.data:
+            print(f"✅ {ip} -> {result.data.domain}")
+        else:
+            print(f"❌ {ip} -> Error: {result.error}")
 
 asyncio.run(dig_examples())
+```
+
+### Advanced Usage
+
+```python
+import asyncio
+import json
+import time
+from typing import List
+from domain_checker import DomainChecker
+from domain_checker.exceptions import ValidationError, TimeoutError
+from domain_checker.utils import validate_domains, create_summary_stats
+
+async def custom_configuration():
+    """Example: Custom configuration"""
+    # Create checker with custom settings
+    checker = DomainChecker(
+        timeout=60,           # Longer timeout
+        max_concurrent=20,    # More concurrent requests
+        rate_limit=0.5        # Slower rate limit
+    )
+    
+    print(f"🔧 Configuration:")
+    print(f"   Timeout: 60s")
+    print(f"   Max Concurrent: 20")
+    print(f"   Rate Limit: 0.5 req/s")
+    
+    # Test with a domain
+    result = await checker.lookup_domain("example.com")
+    print(f"✅ Lookup completed in {result.lookup_time:.2f}s")
+
+async def performance_benchmark():
+    """Example: Performance benchmarking"""
+    domains = [
+        "example.com", "google.com", "github.com", "stackoverflow.com",
+        "reddit.com", "youtube.com", "facebook.com", "twitter.com",
+        "linkedin.com", "instagram.com", "amazon.com", "microsoft.com"
+    ]
+    
+    # Test different configurations
+    configurations = [
+        {"max_concurrent": 1, "rate_limit": 0.5, "name": "Conservative"},
+        {"max_concurrent": 5, "rate_limit": 1.0, "name": "Balanced"},
+        {"max_concurrent": 10, "rate_limit": 2.0, "name": "Aggressive"},
+    ]
+    
+    results = {}
+    
+    for config in configurations:
+        print(f"\n🔧 Testing {config['name']} configuration...")
+        
+        checker = DomainChecker(
+            max_concurrent=config['max_concurrent'],
+            rate_limit=config['rate_limit']
+        )
+        
+        start_time = time.time()
+        bulk_results = await checker.lookup_domains_bulk(domains)
+        end_time = time.time()
+        
+        results[config['name']] = {
+            'total_time': end_time - start_time,
+            'successful': bulk_results.successful_lookups,
+            'failed': bulk_results.failed_lookups,
+            'average_time': bulk_results.average_time_per_domain
+        }
+        
+        print(f"   ⏱️  Total Time: {results[config['name']]['total_time']:.2f}s")
+        print(f"   ✅ Successful: {results[config['name']]['successful']}")
+        print(f"   ❌ Failed: {results[config['name']]['failed']}")
+        print(f"   📊 Average per Domain: {results[config['name']]['average_time']:.2f}s")
+    
+    # Find best configuration
+    best_config = min(results.items(), key=lambda x: x[1]['total_time'])
+    print(f"\n🏆 Best Configuration: {best_config[0]}")
+    print(f"   Time: {best_config[1]['total_time']:.2f}s")
+
+# Run examples
+asyncio.run(custom_configuration())
+asyncio.run(performance_benchmark())
+```
+
+### MCP Server Usage
+
+```python
+import asyncio
+import json
+from mcp.client import Client
+
+async def mcp_client_example():
+    """Example: Using domain checker via MCP"""
+    # Connect to MCP server
+    client = Client("domain-checker")
+    
+    try:
+        await client.connect()
+        print("✅ Connected to MCP server")
+        
+        # List available tools
+        tools = await client.list_tools()
+        print(f"📋 Available tools: {[tool.name for tool in tools]}")
+        
+        # Lookup a single domain
+        print("\n🔍 Looking up example.com...")
+        result = await client.call_tool("lookup_domain", {
+            "domain": "example.com",
+            "method": "auto",
+            "timeout": 30
+        })
+        
+        if result and result.content:
+            data = json.loads(result.content[0].text)
+            print(f"✅ Domain: {data['domain']}")
+            print(f"📋 Success: {data['success']}")
+            print(f"⏱️  Time: {data['lookup_time']:.2f}s")
+            print(f"🔧 Method: {data['method']}")
+            
+            if data['data']:
+                print(f"🏢 Registrar: {data['data']['registrar']}")
+                print(f"📅 Creation: {data['data']['creation_date']}")
+                print(f"⏰ Expiration: {data['data']['expiration_date']}")
+        
+        # Bulk lookup
+        print("\n🔍 Bulk lookup...")
+        bulk_result = await client.call_tool("lookup_domains_bulk", {
+            "domains": ["google.com", "github.com", "stackoverflow.com"],
+            "method": "auto",
+            "timeout": 30,
+            "max_concurrent": 5,
+            "rate_limit": 1.0
+        })
+        
+        if bulk_result and bulk_result.content:
+            data = json.loads(bulk_result.content[0].text)
+            print(f"📊 Bulk Results:")
+            print(f"   Total: {data['total_domains']}")
+            print(f"   Successful: {data['successful_lookups']}")
+            print(f"   Failed: {data['failed_lookups']}")
+            print(f"   Total Time: {data['total_time']:.2f}s")
+            
+            for result in data['results']:
+                if result['success']:
+                    print(f"   ✅ {result['domain']}: {result['data']['registrar'] if result['data'] else 'N/A'}")
+                else:
+                    print(f"   ❌ {result['domain']}: {result['error']}")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+    
+    finally:
+        await client.disconnect()
+        print("👋 Disconnected from MCP server")
+
+asyncio.run(mcp_client_example())
 ```
 
 ## Error Handling
@@ -410,8 +707,62 @@ except DomainLookupError as e:
 1. **Use appropriate concurrency**: Set `max_concurrent` based on your system and network capacity
 2. **Rate limiting**: Use `rate_limit` to avoid overwhelming servers
 3. **Method selection**: RDAP is generally faster than WHOIS
-4. **Caching**: Enable caching for repeated lookups
-5. **Batch processing**: Use bulk operations for multiple domains
+4. **Batch processing**: Use bulk operations for multiple domains
+5. **pipx installation**: Use pipx for better isolation and performance
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Python Version Error
+```
+❌ Python 3.8+ is required. Found: 3.7
+```
+**Solution**: Upgrade Python to 3.8 or higher
+
+#### 2. Permission Denied
+```
+❌ Permission denied: /usr/local/bin/domch
+```
+**Solution**: Use `pip install --user -e .` or install with pipx
+
+#### 3. Externally Managed Environment
+```
+❌ externally-managed-environment
+```
+**Solution**: Use pipx for installation: `pipx install -e .`
+
+#### 4. Import Error
+```
+❌ ModuleNotFoundError: No module named 'domain_checker'
+```
+**Solution**: Reinstall the package with `pip install -e .` or `pipx reinstall domain-checker`
+
+#### 5. Command Not Found
+```
+❌ domch: command not found
+```
+**Solution**: Reinstall with pipx: `pipx reinstall domain-checker`
+
+### Performance Issues
+
+#### Slow Lookups
+- **Cause**: Network latency or rate limiting
+- **Solution**: Adjust `--rate-limit` and `--concurrent` parameters
+
+#### High Memory Usage
+- **Cause**: Large bulk operations
+- **Solution**: Reduce `--concurrent` parameter or process in smaller batches
+
+### Network Issues
+
+#### WHOIS Timeouts
+- **Cause**: WHOIS servers are slow or unresponsive
+- **Solution**: Use `--method rdap` or increase `--timeout`
+
+#### RDAP Failures
+- **Cause**: RDAP servers are down or domain not supported
+- **Solution**: Use `--method whois` or `--method auto`
 
 ## Contributing
 
