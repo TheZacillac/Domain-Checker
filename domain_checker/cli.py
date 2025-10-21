@@ -806,225 +806,403 @@ def prop(
     asyncio.run(_propagation())
 
 
-def display_dns_comparison_rich(domain: str, record_type: str, resolver_result, ns_result, compare_ns: str):
+def display_dns_comparison_rich(domain: str, record_types: list, all_results: dict, compare_ns: str):
     """Display DNS comparison results in rich format"""
     console.print(f"\n[bold green]DNS Comparison Results[/bold green]")
     console.print("=" * 60)
     
-    # Resolver results
-    console.print(f"\n[bold cyan]Default Resolvers Results:[/bold cyan]")
-    if resolver_result.success and resolver_result.data:
-        if resolver_result.data.raw_data:
-            records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
-            for record in records:
-                console.print(f"  [green]{record}[/green]")
-        else:
-            console.print("  [yellow]No records found[/yellow]")
-        console.print(f"  [dim]Time: {resolver_result.lookup_time:.2f}s[/dim]")
-    else:
-        console.print(f"  [red]Failed: {resolver_result.error}[/red]")
+    # Summary table
+    summary_table = Table(title="Comparison Summary", box=box.ROUNDED, show_lines=True)
+    summary_table.add_column("Record Type", style="cyan", width=8)
+    summary_table.add_column("Default Resolvers", style="green", width=15)
+    summary_table.add_column("Nameserver", style="blue", width=15)
+    summary_table.add_column("Status", style="yellow", width=12)
     
-    # Nameserver results
-    console.print(f"\n[bold cyan]{compare_ns} Results:[/bold cyan]")
-    if ns_result.success and ns_result.data:
-        if ns_result.data.raw_data:
-            records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
-            for record in records:
-                console.print(f"  [green]{record}[/green]")
-        else:
-            console.print("  [yellow]No records found[/yellow]")
-        console.print(f"  [dim]Time: {ns_result.lookup_time:.2f}s[/dim]")
-    else:
-        console.print(f"  [red]Failed: {ns_result.error}[/red]")
-    
-    # Comparison analysis
-    console.print(f"\n[bold yellow]Comparison Analysis:[/bold yellow]")
-    
-    if resolver_result.success and ns_result.success:
-        resolver_records = []
-        ns_records = []
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
         
-        if resolver_result.data and resolver_result.data.raw_data:
+        # Count records
+        resolver_count = 0
+        ns_count = 0
+        
+        if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
             resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
-        if ns_result.data and ns_result.data.raw_data:
+            resolver_count = len(resolver_records)
+        
+        if ns_result.success and ns_result.data and ns_result.data.raw_data:
             ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            ns_count = len(ns_records)
         
-        # Compare records
-        resolver_set = set(resolver_records)
-        ns_set = set(ns_records)
-        
-        if resolver_set == ns_set:
-            console.print("  [green]✅ Results match perfectly![/green]")
-            console.print("  [dim]Both resolvers returned identical DNS records.[/dim]")
+        # Determine status
+        if resolver_result.success and ns_result.success:
+            if resolver_count == ns_count:
+                if resolver_count == 0:
+                    status = "[dim]No records[/dim]"
+                else:
+                    # Check if records match
+                    resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                    ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                    if resolver_set == ns_set:
+                        status = "[green]✅ Match[/green]"
+                    else:
+                        status = "[red]❌ Different[/red]"
+            else:
+                status = "[red]❌ Different[/red]"
+        elif not resolver_result.success and not ns_result.success:
+            status = "[red]❌ Both failed[/red]"
+        elif not resolver_result.success:
+            status = "[red]❌ Resolver failed[/red]"
         else:
-            console.print("  [red]❌ Results do not match[/red]")
-            
-            # Show differences
-            only_in_resolver = resolver_set - ns_set
-            only_in_ns = ns_set - resolver_set
-            
-            if only_in_resolver:
-                console.print(f"\n  [yellow]Records only in default resolvers:[/yellow]")
-                for record in sorted(only_in_resolver):
-                    console.print(f"    [red]- {record}[/red]")
-            
-            if only_in_ns:
-                console.print(f"\n  [yellow]Records only in {compare_ns}:[/yellow]")
-                for record in sorted(only_in_ns):
-                    console.print(f"    [green]+ {record}[/green]")
-            
-            # Diagnosis
-            console.print(f"\n  [bold]Possible Issues:[/bold]")
-            if only_in_resolver and only_in_ns:
-                console.print("    • DNS propagation in progress")
-                console.print("    • Different DNS configurations")
-                console.print("    • Caching differences")
-            elif only_in_resolver:
-                console.print("    • {compare_ns} may not have the latest records")
-                console.print("    • Possible DNS propagation delay")
-            elif only_in_ns:
-                console.print("    • Default resolvers may be using cached data")
-                console.print("    • Possible DNS propagation delay")
+            status = "[red]❌ NS failed[/red]"
+        
+        summary_table.add_row(
+            rt,
+            f"{resolver_count} records",
+            f"{ns_count} records",
+            status
+        )
     
-    elif not resolver_result.success and not ns_result.success:
-        console.print("  [red]❌ Both lookups failed[/red]")
-        console.print("  [dim]Check domain name and network connectivity[/dim]")
-    elif not resolver_result.success:
-        console.print("  [red]❌ Default resolvers failed[/red]")
-        console.print(f"  [dim]Error: {resolver_result.error}[/dim]")
+    console.print(summary_table)
+    
+    # Detailed results for each record type
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        console.print(f"\n[bold cyan]{rt} Records Comparison:[/bold cyan]")
+        console.print("-" * 40)
+        
+        # Resolver results
+        console.print(f"\n[bold]Default Resolvers:[/bold]")
+        if resolver_result.success and resolver_result.data:
+            if resolver_result.data.raw_data:
+                records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+                for record in records:
+                    console.print(f"  [green]{record}[/green]")
+            else:
+                console.print("  [yellow]No records found[/yellow]")
+            console.print(f"  [dim]Time: {resolver_result.lookup_time:.2f}s[/dim]")
+        else:
+            console.print(f"  [red]Failed: {resolver_result.error}[/red]")
+        
+        # Nameserver results
+        console.print(f"\n[bold]{compare_ns}:[/bold]")
+        if ns_result.success and ns_result.data:
+            if ns_result.data.raw_data:
+                records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+                for record in records:
+                    console.print(f"  [green]{record}[/green]")
+            else:
+                console.print("  [yellow]No records found[/yellow]")
+            console.print(f"  [dim]Time: {ns_result.lookup_time:.2f}s[/dim]")
+        else:
+            console.print(f"  [red]Failed: {ns_result.error}[/red]")
+        
+        # Comparison analysis for this record type
+        if resolver_result.success and ns_result.success:
+            resolver_records = []
+            ns_records = []
+            
+            if resolver_result.data and resolver_result.data.raw_data:
+                resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+            if ns_result.data and ns_result.data.raw_data:
+                ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            
+            # Compare records
+            resolver_set = set(resolver_records)
+            ns_set = set(ns_records)
+            
+            if resolver_set != ns_set:
+                console.print(f"\n[bold yellow]Differences in {rt} records:[/bold yellow]")
+                
+                # Show differences
+                only_in_resolver = resolver_set - ns_set
+                only_in_ns = ns_set - resolver_set
+                
+                if only_in_resolver:
+                    console.print(f"  [yellow]Only in default resolvers:[/yellow]")
+                    for record in sorted(only_in_resolver):
+                        console.print(f"    [red]- {record}[/red]")
+                
+                if only_in_ns:
+                    console.print(f"  [yellow]Only in {compare_ns}:[/yellow]")
+                    for record in sorted(only_in_ns):
+                        console.print(f"    [green]+ {record}[/green]")
+    
+    # Overall diagnosis
+    console.print(f"\n[bold yellow]Overall Analysis:[/bold yellow]")
+    
+    total_matches = 0
+    total_differences = 0
+    total_failures = 0
+    
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        if resolver_result.success and ns_result.success:
+            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+                resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                if resolver_set == ns_set:
+                    total_matches += 1
+                else:
+                    total_differences += 1
+            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
+                total_matches += 1
+            else:
+                total_differences += 1
+        else:
+            total_failures += 1
+    
+    if total_differences == 0 and total_failures == 0:
+        console.print("  [green]✅ All record types match perfectly![/green]")
+        console.print("  [dim]Both resolvers returned identical DNS records for all types.[/dim]")
+    elif total_differences > 0:
+        console.print(f"  [red]❌ Found differences in {total_differences} record type(s)[/red]")
+        console.print("  [dim]Possible issues: DNS propagation, caching, or configuration differences[/dim]")
     else:
-        console.print("  [red]❌ Nameserver lookup failed[/red]")
-        console.print(f"  [dim]Error: {ns_result.error}[/dim]")
+        console.print(f"  [yellow]⚠️  {total_failures} record type(s) failed to query[/yellow]")
+        console.print("  [dim]Check network connectivity and nameserver availability[/dim]")
 
 
-def display_dns_comparison_plain(domain: str, record_type: str, resolver_result, ns_result, compare_ns: str):
+def display_dns_comparison_plain(domain: str, record_types: list, all_results: dict, compare_ns: str):
     """Display DNS comparison results in plain format"""
     print("DNS Comparison Results")
     print("=" * 40)
     
-    # Resolver results
-    print("\nDefault Resolvers Results:")
-    if resolver_result.success and resolver_result.data:
-        if resolver_result.data.raw_data:
-            records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
-            for record in records:
-                print("  " + record)
-        else:
-            print("  No records found")
-        print("  Time: " + f"{resolver_result.lookup_time:.2f}s")
-    else:
-        print("  Failed: " + resolver_result.error)
-    
-    # Nameserver results
-    print(f"\n{compare_ns} Results:")
-    if ns_result.success and ns_result.data:
-        if ns_result.data.raw_data:
-            records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
-            for record in records:
-                print("  " + record)
-        else:
-            print("  No records found")
-        print("  Time: " + f"{ns_result.lookup_time:.2f}s")
-    else:
-        print("  Failed: " + ns_result.error)
-    
-    # Comparison analysis
-    print("\nComparison Analysis:")
-    
-    if resolver_result.success and ns_result.success:
-        resolver_records = []
-        ns_records = []
+    # Summary
+    print("\nComparison Summary:")
+    print("-" * 20)
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
         
-        if resolver_result.data and resolver_result.data.raw_data:
+        # Count records
+        resolver_count = 0
+        ns_count = 0
+        
+        if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
             resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
-        if ns_result.data and ns_result.data.raw_data:
+            resolver_count = len(resolver_records)
+        
+        if ns_result.success and ns_result.data and ns_result.data.raw_data:
             ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            ns_count = len(ns_records)
         
-        # Compare records
-        resolver_set = set(resolver_records)
-        ns_set = set(ns_records)
-        
-        if resolver_set == ns_set:
-            print("  Results match perfectly!")
-            print("  Both resolvers returned identical DNS records.")
+        # Determine status
+        if resolver_result.success and ns_result.success:
+            if resolver_count == ns_count:
+                if resolver_count == 0:
+                    status = "No records"
+                else:
+                    # Check if records match
+                    resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                    ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                    if resolver_set == ns_set:
+                        status = "✅ Match"
+                    else:
+                        status = "❌ Different"
+            else:
+                status = "❌ Different"
+        elif not resolver_result.success and not ns_result.success:
+            status = "❌ Both failed"
+        elif not resolver_result.success:
+            status = "❌ Resolver failed"
         else:
-            print("  Results do not match")
-            
-            # Show differences
-            only_in_resolver = resolver_set - ns_set
-            only_in_ns = ns_set - resolver_set
-            
-            if only_in_resolver:
-                print("\n  Records only in default resolvers:")
-                for record in sorted(only_in_resolver):
-                    print("    - " + record)
-            
-            if only_in_ns:
-                print(f"\n  Records only in {compare_ns}:")
-                for record in sorted(only_in_ns):
-                    print("    + " + record)
-            
-            # Diagnosis
-            print("\n  Possible Issues:")
-            if only_in_resolver and only_in_ns:
-                print("    • DNS propagation in progress")
-                print("    • Different DNS configurations")
-                print("    • Caching differences")
-            elif only_in_resolver:
-                print(f"    • {compare_ns} may not have the latest records")
-                print("    • Possible DNS propagation delay")
-            elif only_in_ns:
-                print("    • Default resolvers may be using cached data")
-                print("    • Possible DNS propagation delay")
+            status = "❌ NS failed"
+        
+        print(f"{rt:8} | Default: {resolver_count:2} records | {compare_ns}: {ns_count:2} records | {status}")
     
-    elif not resolver_result.success and not ns_result.success:
-        print("  Both lookups failed")
-        print("  Check domain name and network connectivity")
-    elif not resolver_result.success:
-        print("  Default resolvers failed")
-        print("  Error: " + resolver_result.error)
+    # Detailed results for each record type
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        print(f"\n{rt} Records Comparison:")
+        print("-" * 30)
+        
+        # Resolver results
+        print("\nDefault Resolvers:")
+        if resolver_result.success and resolver_result.data:
+            if resolver_result.data.raw_data:
+                records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+                for record in records:
+                    print("  " + record)
+            else:
+                print("  No records found")
+            print("  Time: " + f"{resolver_result.lookup_time:.2f}s")
+        else:
+            print("  Failed: " + resolver_result.error)
+        
+        # Nameserver results
+        print(f"\n{compare_ns}:")
+        if ns_result.success and ns_result.data:
+            if ns_result.data.raw_data:
+                records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+                for record in records:
+                    print("  " + record)
+            else:
+                print("  No records found")
+            print("  Time: " + f"{ns_result.lookup_time:.2f}s")
+        else:
+            print("  Failed: " + ns_result.error)
+        
+        # Comparison analysis for this record type
+        if resolver_result.success and ns_result.success:
+            resolver_records = []
+            ns_records = []
+            
+            if resolver_result.data and resolver_result.data.raw_data:
+                resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+            if ns_result.data and ns_result.data.raw_data:
+                ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            
+            # Compare records
+            resolver_set = set(resolver_records)
+            ns_set = set(ns_records)
+            
+            if resolver_set != ns_set:
+                print(f"\nDifferences in {rt} records:")
+                
+                # Show differences
+                only_in_resolver = resolver_set - ns_set
+                only_in_ns = ns_set - resolver_set
+                
+                if only_in_resolver:
+                    print(f"  Only in default resolvers:")
+                    for record in sorted(only_in_resolver):
+                        print("    - " + record)
+                
+                if only_in_ns:
+                    print(f"  Only in {compare_ns}:")
+                    for record in sorted(only_in_ns):
+                        print("    + " + record)
+    
+    # Overall diagnosis
+    print(f"\nOverall Analysis:")
+    
+    total_matches = 0
+    total_differences = 0
+    total_failures = 0
+    
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        if resolver_result.success and ns_result.success:
+            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+                resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                if resolver_set == ns_set:
+                    total_matches += 1
+                else:
+                    total_differences += 1
+            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
+                total_matches += 1
+            else:
+                total_differences += 1
+        else:
+            total_failures += 1
+    
+    if total_differences == 0 and total_failures == 0:
+        print("  ✅ All record types match perfectly!")
+        print("  Both resolvers returned identical DNS records for all types.")
+    elif total_differences > 0:
+        print(f"  ❌ Found differences in {total_differences} record type(s)")
+        print("  Possible issues: DNS propagation, caching, or configuration differences")
     else:
-        print("  Nameserver lookup failed")
-        print("  Error: " + ns_result.error)
+        print(f"  ⚠️  {total_failures} record type(s) failed to query")
+        print("  Check network connectivity and nameserver availability")
 
 
-def display_dns_comparison_json(domain: str, record_type: str, resolver_result, ns_result, compare_ns: str):
+def display_dns_comparison_json(domain: str, record_types: list, all_results: dict, compare_ns: str):
     """Display DNS comparison results in JSON format"""
     import json
     
-    resolver_records = []
-    ns_records = []
-    
-    if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
-        resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
-    if ns_result.success and ns_result.data and ns_result.data.raw_data:
-        ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
-    
-    resolver_set = set(resolver_records)
-    ns_set = set(ns_records)
-    
     data = {
         "domain": domain,
-        "record_type": record_type,
+        "record_types": record_types,
         "compare_nameserver": compare_ns,
-        "resolver_results": {
-            "success": resolver_result.success,
-            "records": resolver_records,
-            "time": resolver_result.lookup_time,
-            "error": resolver_result.error if not resolver_result.success else None
-        },
-        "nameserver_results": {
-            "success": ns_result.success,
-            "records": ns_records,
-            "time": ns_result.lookup_time,
-            "error": ns_result.error if not ns_result.success else None
-        },
-        "comparison": {
-            "match": resolver_set == ns_set,
-            "only_in_resolver": list(resolver_set - ns_set),
-            "only_in_nameserver": list(ns_set - resolver_set),
-            "common_records": list(resolver_set & ns_set)
+        "results": {}
+    }
+    
+    # Process each record type
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        resolver_records = []
+        ns_records = []
+        
+        if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
+            resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+        if ns_result.success and ns_result.data and ns_result.data.raw_data:
+            ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+        
+        resolver_set = set(resolver_records)
+        ns_set = set(ns_records)
+        
+        data["results"][rt] = {
+            "resolver_results": {
+                "success": resolver_result.success,
+                "records": resolver_records,
+                "time": resolver_result.lookup_time,
+                "error": resolver_result.error if not resolver_result.success else None
+            },
+            "nameserver_results": {
+                "success": ns_result.success,
+                "records": ns_records,
+                "time": ns_result.lookup_time,
+                "error": ns_result.error if not ns_result.success else None
+            },
+            "comparison": {
+                "match": resolver_set == ns_set,
+                "only_in_resolver": list(resolver_set - ns_set),
+                "only_in_nameserver": list(ns_set - resolver_set),
+                "common_records": list(resolver_set & ns_set)
+            }
         }
+    
+    # Overall summary
+    total_matches = 0
+    total_differences = 0
+    total_failures = 0
+    
+    for rt in record_types:
+        results = all_results[rt]
+        resolver_result = results['resolver']
+        ns_result = results['nameserver']
+        
+        if resolver_result.success and ns_result.success:
+            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+                resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                if resolver_set == ns_set:
+                    total_matches += 1
+                else:
+                    total_differences += 1
+            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
+                total_matches += 1
+            else:
+                total_differences += 1
+        else:
+            total_failures += 1
+    
+    data["summary"] = {
+        "total_record_types": len(record_types),
+        "matches": total_matches,
+        "differences": total_differences,
+        "failures": total_failures,
+        "overall_status": "perfect_match" if total_differences == 0 and total_failures == 0 else "differences_found" if total_differences > 0 else "failures"
     }
     
     print(json.dumps(data, indent=2))
@@ -1033,7 +1211,7 @@ def display_dns_comparison_json(domain: str, record_type: str, resolver_result, 
 @app.command()
 def compare(
     domain: str = typer.Argument(..., help="Domain name to compare DNS results for"),
-    record_type: str = typer.Option("A", "--record", "-r", help="DNS record type to compare: A, AAAA, MX, NS, SOA, TXT, ANY (default: A)"),
+    record_type: str = typer.Option("ALL", "--record", "-r", help="DNS record type to compare: A, AAAA, MX, TXT, ALL (default: ALL)"),
     custom_ns: str = typer.Option(None, "--nameserver", "-n", help="Custom nameserver to compare against (e.g., 8.8.8.8 or ns1.example.com)"),
     timeout: int = typer.Option(10, "--timeout", "-t", help="Timeout in seconds (default: 10)"),
     output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, json (default: rich)"),
@@ -1044,10 +1222,13 @@ def compare(
     and a specified nameserver, then compares the results to help diagnose
     DNS configuration issues, propagation problems, or inconsistencies.
     
+    By default, compares ALL record types (A, AAAA, MX, TXT) excluding NS and SOA.
+    Use --record to compare a specific record type only.
+    
     Examples:
-        domch compare example.com
-        domch compare example.com --record MX --nameserver 8.8.8.8
-        domch compare example.com --record NS --nameserver ns1.example.com
+        domch compare example.com                    # Compare all record types
+        domch compare example.com --record MX        # Compare only MX records
+        domch compare example.com --nameserver 8.8.8.8
         domch compare example.com --format plain
     """
     async def _compare():
@@ -1055,7 +1236,14 @@ def compare(
         
         # Get domain's authoritative nameservers first
         console.print(f"[bold blue]DNS Comparison for: {domain}[/bold blue]")
-        console.print(f"[cyan]Record Type:[/cyan] {record_type}")
+        
+        # Determine record types to compare
+        if record_type.upper() == "ALL":
+            record_types = ["A", "AAAA", "MX", "TXT"]  # Exclude NS and SOA as requested
+            console.print(f"[cyan]Record Types:[/cyan] {', '.join(record_types)} (excluding NS and SOA)")
+        else:
+            record_types = [record_type.upper()]
+            console.print(f"[cyan]Record Type:[/cyan] {record_type}")
         
         # Get authoritative nameservers
         ns_result = await checker.lookup_domain(domain, "dig", "NS")
@@ -1077,28 +1265,35 @@ def compare(
         
         console.print("")
         
-        # Perform lookups
+        # Perform lookups for all record types
+        all_results = {}
+        
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console
         ) as progress:
-            task1 = progress.add_task("Querying default resolvers...", total=None)
-            resolver_result = await checker.lookup_domain(domain, "dig", record_type)
-            progress.update(task1, description="Default resolvers queried")
-            
-            task2 = progress.add_task(f"Querying {compare_ns}...", total=None)
-            # For custom NS lookup, we'll need to implement this in the core
-            ns_result = await checker.lookup_domain_with_ns(domain, record_type, compare_ns)
-            progress.update(task2, description=f"{compare_ns} queried")
+            for rt in record_types:
+                task1 = progress.add_task(f"Querying default resolvers for {rt}...", total=None)
+                resolver_result = await checker.lookup_domain(domain, "dig", rt)
+                progress.update(task1, description=f"Default resolvers queried for {rt}")
+                
+                task2 = progress.add_task(f"Querying {compare_ns} for {rt}...", total=None)
+                ns_result = await checker.lookup_domain_with_ns(domain, rt, compare_ns)
+                progress.update(task2, description=f"{compare_ns} queried for {rt}")
+                
+                all_results[rt] = {
+                    'resolver': resolver_result,
+                    'nameserver': ns_result
+                }
         
         # Compare results
         if output_format == "plain":
-            display_dns_comparison_plain(domain, record_type, resolver_result, ns_result, compare_ns)
+            display_dns_comparison_plain(domain, record_types, all_results, compare_ns)
         elif output_format == "json":
-            display_dns_comparison_json(domain, record_type, resolver_result, ns_result, compare_ns)
+            display_dns_comparison_json(domain, record_types, all_results, compare_ns)
         else:
-            display_dns_comparison_rich(domain, record_type, resolver_result, ns_result, compare_ns)
+            display_dns_comparison_rich(domain, record_types, all_results, compare_ns)
     
     asyncio.run(_compare())
 
@@ -1298,7 +1493,7 @@ def help():
 [bold cyan]compare[/bold cyan] [yellow]<domain>[/yellow]
   Compare DNS results between resolver NS and specified NS set
   [dim]Flags:[/dim]
-    [cyan]-r, --record[/cyan] [yellow]<type>[/yellow]       DNS record type: A, AAAA, MX, NS, SOA, TXT, ANY (default: A)
+    [cyan]-r, --record[/cyan] [yellow]<type>[/yellow]       DNS record type: A, AAAA, MX, TXT, ALL (default: ALL)
     [cyan]-n, --nameserver[/cyan] [yellow]<ns>[/yellow]     Custom nameserver to compare against (e.g., 8.8.8.8)
     [cyan]-t, --timeout[/cyan] [yellow]<seconds>[/yellow]   Timeout in seconds (default: 10)
     [cyan]-f, --format[/cyan] [yellow]<format>[/yellow]     Output format: rich, plain, json (default: rich)
