@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.4] - 2025-01-27
+
+### Enhanced
+- **Compare Command**: Enhanced compare command to perform full DNS record comparison across all record types
+- **Record Type Coverage**: Now compares A, AAAA, CNAME, MX, TXT records by default (excluding NS and SOA)
+- **Empty Result Handling**: Fixed logic to properly handle empty DNS results as matches instead of differences
+- **Comprehensive Analysis**: Added detailed comparison analysis with summary tables and overall diagnosis
+
+### Fixed
+- **AAAA Record Comparison**: Fixed incorrect difference detection when both resolvers return no AAAA records
+- **CNAME Record Support**: Added missing CNAME record type to comparison functionality
+- **Record Counting Logic**: Fixed record counting to properly filter out "No DNS records found" messages
+- **Status Reporting**: Improved accuracy of match/difference status reporting across all record types
+
+### Changed
+- **Default Behavior**: Compare command now compares all record types by default instead of just A records
+- **Output Format**: Enhanced display functions to show comprehensive comparison results with better formatting
+- **Help Documentation**: Updated help text to reflect new record types and enhanced functionality
+
 ## [1.3.3] - 2025-01-27
 
 ### Fixed

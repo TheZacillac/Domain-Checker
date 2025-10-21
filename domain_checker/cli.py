@@ -829,25 +829,32 @@ def display_dns_comparison_rich(domain: str, record_types: list, all_results: di
         
         if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
             resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+            # Filter out "No DNS records found" messages
+            resolver_records = [r for r in resolver_records if r != "No DNS records found"]
             resolver_count = len(resolver_records)
         
         if ns_result.success and ns_result.data and ns_result.data.raw_data:
             ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            # Filter out "No DNS records found" messages
+            ns_records = [r for r in ns_records if r != "No records found"]
             ns_count = len(ns_records)
         
         # Determine status
         if resolver_result.success and ns_result.success:
-            if resolver_count == ns_count:
-                if resolver_count == 0:
-                    status = "[dim]No records[/dim]"
+            if resolver_count == 0 and ns_count == 0:
+                # Both have no records - this is a match
+                status = "[green]✅ Match[/green]"
+            elif resolver_count == ns_count:
+                # Same number of records, check if they match
+                resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                # Filter out "No DNS records found" messages
+                resolver_set = {r for r in resolver_set if r != "No DNS records found"}
+                ns_set = {r for r in ns_set if r != "No records found"}
+                if resolver_set == ns_set:
+                    status = "[green]✅ Match[/green]"
                 else:
-                    # Check if records match
-                    resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
-                    ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
-                    if resolver_set == ns_set:
-                        status = "[green]✅ Match[/green]"
-                    else:
-                        status = "[red]❌ Different[/red]"
+                    status = "[red]❌ Different[/red]"
             else:
                 status = "[red]❌ Different[/red]"
         elif not resolver_result.success and not ns_result.success:
@@ -908,14 +915,25 @@ def display_dns_comparison_rich(domain: str, record_types: list, all_results: di
             
             if resolver_result.data and resolver_result.data.raw_data:
                 resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+                # Filter out "No DNS records found" messages
+                resolver_records = [r for r in resolver_records if r != "No DNS records found"]
             if ns_result.data and ns_result.data.raw_data:
                 ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+                # Filter out "No DNS records found" messages
+                ns_records = [r for r in ns_records if r != "No records found"]
             
-            # Compare records
+            # Compare records - only show differences if there are actual differences
             resolver_set = set(resolver_records)
             ns_set = set(ns_records)
             
-            if resolver_set != ns_set:
+            # Check if both have no records (empty results)
+            resolver_has_data = resolver_result.data and resolver_result.data.raw_data
+            ns_has_data = ns_result.data and ns_result.data.raw_data
+            
+            if not resolver_has_data and not ns_has_data:
+                # Both have no records - this is a match, don't show differences
+                pass
+            elif resolver_set != ns_set:
                 console.print(f"\n[bold yellow]Differences in {rt} records:[/bold yellow]")
                 
                 # Show differences
@@ -945,16 +963,26 @@ def display_dns_comparison_rich(domain: str, record_types: list, all_results: di
         ns_result = results['nameserver']
         
         if resolver_result.success and ns_result.success:
-            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+            # Check if both have no records (empty results)
+            resolver_has_data = resolver_result.data and resolver_result.data.raw_data
+            ns_has_data = ns_result.data and ns_result.data.raw_data
+            
+            if not resolver_has_data and not ns_has_data:
+                # Both have no records - this is a match
+                total_matches += 1
+            elif resolver_has_data and ns_has_data:
+                # Both have data, compare the actual records
                 resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
                 ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                # Filter out "No DNS records found" messages
+                resolver_set = {r for r in resolver_set if r != "No DNS records found"}
+                ns_set = {r for r in ns_set if r != "No records found"}
                 if resolver_set == ns_set:
                     total_matches += 1
                 else:
                     total_differences += 1
-            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
-                total_matches += 1
             else:
+                # One has data, one doesn't - this is a difference
                 total_differences += 1
         else:
             total_failures += 1
@@ -989,25 +1017,32 @@ def display_dns_comparison_plain(domain: str, record_types: list, all_results: d
         
         if resolver_result.success and resolver_result.data and resolver_result.data.raw_data:
             resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+            # Filter out "No DNS records found" messages
+            resolver_records = [r for r in resolver_records if r != "No DNS records found"]
             resolver_count = len(resolver_records)
         
         if ns_result.success and ns_result.data and ns_result.data.raw_data:
             ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+            # Filter out "No DNS records found" messages
+            ns_records = [r for r in ns_records if r != "No records found"]
             ns_count = len(ns_records)
         
         # Determine status
         if resolver_result.success and ns_result.success:
-            if resolver_count == ns_count:
-                if resolver_count == 0:
-                    status = "No records"
+            if resolver_count == 0 and ns_count == 0:
+                # Both have no records - this is a match
+                status = "✅ Match"
+            elif resolver_count == ns_count:
+                # Same number of records, check if they match
+                resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
+                ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                # Filter out "No DNS records found" messages
+                resolver_set = {r for r in resolver_set if r != "No DNS records found"}
+                ns_set = {r for r in ns_set if r != "No records found"}
+                if resolver_set == ns_set:
+                    status = "✅ Match"
                 else:
-                    # Check if records match
-                    resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
-                    ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
-                    if resolver_set == ns_set:
-                        status = "✅ Match"
-                    else:
-                        status = "❌ Different"
+                    status = "❌ Different"
             else:
                 status = "❌ Different"
         elif not resolver_result.success and not ns_result.success:
@@ -1061,14 +1096,25 @@ def display_dns_comparison_plain(domain: str, record_types: list, all_results: d
             
             if resolver_result.data and resolver_result.data.raw_data:
                 resolver_records = [line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()]
+                # Filter out "No DNS records found" messages
+                resolver_records = [r for r in resolver_records if r != "No DNS records found"]
             if ns_result.data and ns_result.data.raw_data:
                 ns_records = [line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()]
+                # Filter out "No DNS records found" messages
+                ns_records = [r for r in ns_records if r != "No records found"]
             
-            # Compare records
+            # Compare records - only show differences if there are actual differences
             resolver_set = set(resolver_records)
             ns_set = set(ns_records)
             
-            if resolver_set != ns_set:
+            # Check if both have no records (empty results)
+            resolver_has_data = resolver_result.data and resolver_result.data.raw_data
+            ns_has_data = ns_result.data and ns_result.data.raw_data
+            
+            if not resolver_has_data and not ns_has_data:
+                # Both have no records - this is a match, don't show differences
+                pass
+            elif resolver_set != ns_set:
                 print(f"\nDifferences in {rt} records:")
                 
                 # Show differences
@@ -1098,16 +1144,26 @@ def display_dns_comparison_plain(domain: str, record_types: list, all_results: d
         ns_result = results['nameserver']
         
         if resolver_result.success and ns_result.success:
-            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+            # Check if both have no records (empty results)
+            resolver_has_data = resolver_result.data and resolver_result.data.raw_data
+            ns_has_data = ns_result.data and ns_result.data.raw_data
+            
+            if not resolver_has_data and not ns_has_data:
+                # Both have no records - this is a match
+                total_matches += 1
+            elif resolver_has_data and ns_has_data:
+                # Both have data, compare the actual records
                 resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
                 ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                # Filter out "No DNS records found" messages
+                resolver_set = {r for r in resolver_set if r != "No DNS records found"}
+                ns_set = {r for r in ns_set if r != "No records found"}
                 if resolver_set == ns_set:
                     total_matches += 1
                 else:
                     total_differences += 1
-            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
-                total_matches += 1
             else:
+                # One has data, one doesn't - this is a difference
                 total_differences += 1
         else:
             total_failures += 1
@@ -1183,16 +1239,26 @@ def display_dns_comparison_json(domain: str, record_types: list, all_results: di
         ns_result = results['nameserver']
         
         if resolver_result.success and ns_result.success:
-            if resolver_result.data and ns_result.data and resolver_result.data.raw_data and ns_result.data.raw_data:
+            # Check if both have no records (empty results)
+            resolver_has_data = resolver_result.data and resolver_result.data.raw_data
+            ns_has_data = ns_result.data and ns_result.data.raw_data
+            
+            if not resolver_has_data and not ns_has_data:
+                # Both have no records - this is a match
+                total_matches += 1
+            elif resolver_has_data and ns_has_data:
+                # Both have data, compare the actual records
                 resolver_set = set([line.strip() for line in resolver_result.data.raw_data.strip().split('\n') if line.strip()])
                 ns_set = set([line.strip() for line in ns_result.data.raw_data.strip().split('\n') if line.strip()])
+                # Filter out "No DNS records found" messages
+                resolver_set = {r for r in resolver_set if r != "No DNS records found"}
+                ns_set = {r for r in ns_set if r != "No records found"}
                 if resolver_set == ns_set:
                     total_matches += 1
                 else:
                     total_differences += 1
-            elif not resolver_result.data.raw_data and not ns_result.data.raw_data:
-                total_matches += 1
             else:
+                # One has data, one doesn't - this is a difference
                 total_differences += 1
         else:
             total_failures += 1
@@ -1211,7 +1277,7 @@ def display_dns_comparison_json(domain: str, record_types: list, all_results: di
 @app.command()
 def compare(
     domain: str = typer.Argument(..., help="Domain name to compare DNS results for"),
-    record_type: str = typer.Option("ALL", "--record", "-r", help="DNS record type to compare: A, AAAA, MX, TXT, ALL (default: ALL)"),
+    record_type: str = typer.Option("ALL", "--record", "-r", help="DNS record type to compare: A, AAAA, CNAME, MX, TXT, ALL (default: ALL)"),
     custom_ns: str = typer.Option(None, "--nameserver", "-n", help="Custom nameserver to compare against (e.g., 8.8.8.8 or ns1.example.com)"),
     timeout: int = typer.Option(10, "--timeout", "-t", help="Timeout in seconds (default: 10)"),
     output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich, plain, json (default: rich)"),
@@ -1239,7 +1305,7 @@ def compare(
         
         # Determine record types to compare
         if record_type.upper() == "ALL":
-            record_types = ["A", "AAAA", "MX", "TXT"]  # Exclude NS and SOA as requested
+            record_types = ["A", "AAAA", "CNAME", "MX", "TXT"]  # Exclude NS and SOA as requested
             console.print(f"[cyan]Record Types:[/cyan] {', '.join(record_types)} (excluding NS and SOA)")
         else:
             record_types = [record_type.upper()]
@@ -1493,7 +1559,7 @@ def help():
 [bold cyan]compare[/bold cyan] [yellow]<domain>[/yellow]
   Compare DNS results between resolver NS and specified NS set
   [dim]Flags:[/dim]
-    [cyan]-r, --record[/cyan] [yellow]<type>[/yellow]       DNS record type: A, AAAA, MX, TXT, ALL (default: ALL)
+    [cyan]-r, --record[/cyan] [yellow]<type>[/yellow]       DNS record type: A, AAAA, CNAME, MX, TXT, ALL (default: ALL)
     [cyan]-n, --nameserver[/cyan] [yellow]<ns>[/yellow]     Custom nameserver to compare against (e.g., 8.8.8.8)
     [cyan]-t, --timeout[/cyan] [yellow]<seconds>[/yellow]   Timeout in seconds (default: 10)
     [cyan]-f, --format[/cyan] [yellow]<format>[/yellow]     Output format: rich, plain, json (default: rich)
