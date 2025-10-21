@@ -340,19 +340,23 @@ def parse_dig_records(raw_data: str, domain: str = "") -> List[Dict[str, str]]:
             ttl = parts[1]
             record_type = parts[3]
             value = ' '.join(parts[4:]) if len(parts) > 4 else ""
+            # Remove trailing dot from target value
+            value = value.rstrip('.')
             
-            records.append({
-                "type": record_type,
-                "name": record_domain,
-                "target": value,
-                "ttl": ttl
-            })
+            # Only include records that match the queried domain to avoid recursive records
+            if record_domain == domain:
+                records.append({
+                    "type": record_type,
+                    "name": record_domain,
+                    "target": value,
+                    "ttl": ttl
+                })
         elif current_record_type and len(parts) >= 1:
             # Simpler format - just the value, use current record type and domain
             records.append({
                 "type": current_record_type,
                 "name": domain,  # Use the queried domain as the name
-                "target": line,
+                "target": line.rstrip('.'),  # Remove trailing dot
                 "ttl": "N/A"  # TTL not available in this format
             })
         elif len(parts) >= 1:
@@ -360,7 +364,7 @@ def parse_dig_records(raw_data: str, domain: str = "") -> List[Dict[str, str]]:
             records.append({
                 "type": "UNKNOWN",
                 "name": domain,
-                "target": line,
+                "target": line.rstrip('.'),  # Remove trailing dot
                 "ttl": "N/A"
             })
     
@@ -398,7 +402,7 @@ def display_domain_info(result: LookupResult, show_raw: bool = False):
     
     # For DIG lookups, show authoritative name servers if available
     if is_dig and domain_info.name_servers:
-        ns_text = "\n".join([f"[cyan]•[/cyan] [yellow]{ns}[/yellow]" for ns in domain_info.name_servers])
+        ns_text = "\n".join([f"[yellow]{ns}[/yellow]" for ns in domain_info.name_servers])
         console.print(Panel(
             ns_text,
             title="[bold blue]Authoritative Name Servers[/bold blue]",
@@ -425,11 +429,21 @@ def display_domain_info(result: LookupResult, show_raw: bool = False):
         parsed_records = parse_dig_records(domain_info.raw_data, domain_info.domain)
         
         if parsed_records:
+            # Calculate dynamic column widths based on content and terminal size
+            terminal_width = console.size.width
+            max_target_length = max(len(record["target"]) for record in parsed_records) if parsed_records else 20
+            max_name_length = max(len(record["name"]) for record in parsed_records) if parsed_records else 15
+            
+            # Reserve space for other columns and padding (Type: 8, TTL: 8, borders: ~10, padding: ~10)
+            available_width = terminal_width - 36
+            target_width = min(max(max_target_length + 2, 20), available_width - max_name_length - 5)
+            name_width = min(max_name_length + 2, available_width - target_width - 5)
+            
             # Create a table for resolved records
             records_table = Table(title="[bold green]Resolved Records[/bold green]", box=box.ROUNDED)
             records_table.add_column("Type", style="cyan", width=8)
-            records_table.add_column("Name", style="yellow", width=25)
-            records_table.add_column("Target", style="green", width=40)
+            records_table.add_column("Name", style="yellow", width=name_width)
+            records_table.add_column("Target", style="green", width=target_width)
             records_table.add_column("TTL", style="blue", width=8)
             
             for record in parsed_records:
