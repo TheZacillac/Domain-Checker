@@ -390,7 +390,8 @@ class DomainChecker:
     async def lookup_domain_with_ns(self, 
                                    domain: str, 
                                    record_type: str = "A",
-                                   nameserver: str = None) -> LookupResult:
+                                   nameserver: str = None,
+                                   norecurse: bool = True) -> LookupResult:
         """
         Lookup a domain using a specific nameserver
         
@@ -398,6 +399,7 @@ class DomainChecker:
             domain: Domain name to lookup
             record_type: DNS record type (A, AAAA, MX, NS, SOA, TXT, ANY)
             nameserver: Specific nameserver to query (IP or hostname)
+            norecurse: If True, use non-recursive queries (prevents recursive resolution)
             
         Returns:
             LookupResult with DNS data
@@ -412,7 +414,7 @@ class DomainChecker:
                 custom_dig_client = DigClient(timeout=self.timeout)
                 
                 # Perform lookup with specific nameserver
-                raw_data = await custom_dig_client.query_with_nameserver(domain, record_type, nameserver)
+                raw_data = await custom_dig_client.query_with_nameserver(domain, record_type, nameserver, norecurse)
             else:
                 # Fallback to regular dig lookup
                 raw_data = await self.dig_client.query(domain, record_type)

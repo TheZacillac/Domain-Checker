@@ -417,7 +417,7 @@ class DigClient:
             source="dig"
         )
     
-    async def query_with_nameserver(self, domain: str, record_type: str, nameserver: str) -> str:
+    async def query_with_nameserver(self, domain: str, record_type: str, nameserver: str, norecurse: bool = True) -> str:
         """
         Perform DIG lookup using a specific nameserver
         
@@ -425,6 +425,7 @@ class DigClient:
             domain: Domain name to lookup
             record_type: DNS record type (A, AAAA, MX, NS, SOA, TXT, ANY, etc.)
             nameserver: Specific nameserver to query (IP or hostname)
+            norecurse: If True, use non-recursive queries (prevents recursive resolution)
             
         Returns:
             Raw DIG output as string
@@ -432,21 +433,27 @@ class DigClient:
         try:
             loop = asyncio.get_event_loop()
             dig_output = await loop.run_in_executor(
-                None, self._sync_dig_lookup_with_ns, domain, record_type, nameserver
+                None, self._sync_dig_lookup_with_ns, domain, record_type, nameserver, norecurse
             )
             return dig_output
             
         except Exception as e:
             return f"Error: {str(e)}"
     
-    def _sync_dig_lookup_with_ns(self, domain: str, record_type: str, nameserver: str) -> str:
+    def _sync_dig_lookup_with_ns(self, domain: str, record_type: str, nameserver: str, norecurse: bool = True) -> str:
         """Synchronous DIG lookup with specific nameserver"""
         try:
-            # Build DIG command with specific nameserver
+            # Build DIG command with specific nameserver - use same format as default resolvers
+            # Use norecurse by default to prevent recursive resolution when querying custom nameservers
+            # Include +comments so we can inspect flags (AA) in the header
+            base_flags = ["+noadditional", "+noquestion", "+nocmd", "+nostats", "+comments"]
+            if norecurse:
+                base_flags.extend(["+norecurse", "+nosearch", "+noidnout"])
+                
             if record_type.upper() == "ANY":
-                cmd = ["dig", "+short", "+noall", "+answer", f"@{nameserver}", domain]
+                cmd = ["dig"] + base_flags + [f"@{nameserver}", domain]
             else:
-                cmd = ["dig", "+short", "+noall", "+answer", f"@{nameserver}", domain, record_type.upper()]
+                cmd = ["dig"] + base_flags + [f"@{nameserver}", domain, record_type.upper()]
             
             # Execute DIG command
             result = subprocess.run(
