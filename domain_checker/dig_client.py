@@ -160,10 +160,18 @@ class DigClient:
         for line in ns_output.strip().split('\n'):
             line = line.strip()
             if line and not line.startswith(';'):
-                # Remove trailing dot if present
-                ns_record = line.rstrip('.')
-                if ns_record:
-                    ns_records.append(ns_record)
+                # Parse structured DNS record format: domain. TTL IN NS server.
+                parts = line.split()
+                if len(parts) >= 5 and parts[2] == "IN" and parts[3] == "NS":
+                    # Extract just the server name
+                    server = parts[4].rstrip('.')
+                    if server:
+                        ns_records.append(server)
+                else:
+                    # Fallback to simple format - just the server name
+                    ns_record = line.rstrip('.')
+                    if ns_record:
+                        ns_records.append(ns_record)
         
         return ns_records
     
