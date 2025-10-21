@@ -27,6 +27,7 @@ from pathlib import Path
 
 from .core import DomainChecker
 from .models import LookupResult, BulkLookupResult
+from .cli import parse_dig_records
 
 
 class LoadingScreen(ModalScreen):
@@ -638,12 +639,24 @@ class DomainCheckerGUI(App):
         
         # For DIG lookups, show resolved records
         if is_dig and domain_info.raw_data:
-            records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
-            if records:
+            parsed_records = parse_dig_records(domain_info.raw_data, domain_info.domain)
+            if parsed_records:
                 result_text += "📋 DNS Records:\n"
-                for record in records:
-                    result_text += f"  • {record}\n"
+                result_text += "Type     Name                      Target                                    TTL\n"
+                result_text += "-" * 80 + "\n"
+                for record in parsed_records:
+                    name = record["name"] if record["name"] else "N/A"
+                    ttl = record["ttl"] if record["ttl"] else "N/A"
+                    result_text += f"{record['type']:<8} {name:<25} {record['target']:<40} {ttl}\n"
                 result_text += "\n"
+            else:
+                # Fallback to simple display if parsing fails
+                records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+                if records:
+                    result_text += "📋 DNS Records:\n"
+                    for record in records:
+                        result_text += f"  • {record}\n"
+                    result_text += "\n"
         
         # Dates (skip for DIG)
         if not is_dig:

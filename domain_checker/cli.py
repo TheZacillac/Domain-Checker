@@ -4,7 +4,7 @@ Command-line interface for domain checker
 
 import asyncio
 import typer
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 import json
 import csv
@@ -97,11 +97,22 @@ def display_domain_info_plain(result: LookupResult, show_raw: bool = False):
     
     # For DIG lookups, show resolved records
     if is_dig and domain_info.raw_data:
-        records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
-        if records:
+        parsed_records = parse_dig_records(domain_info.raw_data, domain_info.domain)
+        if parsed_records:
             print("Resolved Records:")
-            for record in records:
-                print("  " + record)
+            print("Type     Name                      Target                                    TTL")
+            print("-" * 80)
+            for record in parsed_records:
+                name = record["name"] if record["name"] else "N/A"
+                ttl = record["ttl"] if record["ttl"] else "N/A"
+                print(f"{record['type']:<8} {name:<25} {record['target']:<40} {ttl}")
+        else:
+            # Fallback to simple display if parsing fails
+            records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+            if records:
+                print("Resolved Records:")
+                for record in records:
+                    print("  " + record)
     
     # Dates (skip for DIG)
     if not is_dig:
@@ -298,6 +309,64 @@ def format_contact(contact: Optional[dict]) -> str:
     return "\n".join(parts) if parts else "[dim]N/A[/dim]"
 
 
+def parse_dig_records(raw_data: str, domain: str = "") -> List[Dict[str, str]]:
+    """Parse dig raw output into structured records with name and target"""
+    records = []
+    lines = raw_data.strip().split('\n')
+    current_record_type = None
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check if this is a section header
+        if line.startswith("=== ") and line.endswith(" Records ==="):
+            current_record_type = line.replace("=== ", "").replace(" Records ===", "")
+            continue
+        
+        # Skip "No DNS records found" messages
+        if line == "No DNS records found" or line == "No records found":
+            continue
+        
+        # Parse the record line
+        # Format varies by record type, but generally: domain TTL IN TYPE value
+        # For simpler formats, it might just be the value
+        parts = line.split()
+        
+        if len(parts) >= 4 and parts[2] == "IN":
+            # Standard DNS record format: domain TTL IN TYPE value
+            record_domain = parts[0].rstrip('.')
+            ttl = parts[1]
+            record_type = parts[3]
+            value = ' '.join(parts[4:]) if len(parts) > 4 else ""
+            
+            records.append({
+                "type": record_type,
+                "name": record_domain,
+                "target": value,
+                "ttl": ttl
+            })
+        elif current_record_type and len(parts) >= 1:
+            # Simpler format - just the value, use current record type and domain
+            records.append({
+                "type": current_record_type,
+                "name": domain,  # Use the queried domain as the name
+                "target": line,
+                "ttl": "N/A"  # TTL not available in this format
+            })
+        elif len(parts) >= 1:
+            # Fallback - treat as a simple value
+            records.append({
+                "type": "UNKNOWN",
+                "name": domain,
+                "target": line,
+                "ttl": "N/A"
+            })
+    
+    return records
+
+
 def display_domain_info(result: LookupResult, show_raw: bool = False):
     """Display detailed domain information"""
     if not result.success or not result.data:
@@ -350,20 +419,41 @@ def display_domain_info(result: LookupResult, show_raw: bool = False):
         
         console.print(dates_table)
     
-    # For DIG lookups, show resolved addresses/records in a dedicated box
+    # For DIG lookups, show resolved addresses/records in a dedicated table
     if is_dig and domain_info.raw_data:
-        # Parse the raw data to extract resolved records
-        records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+        # Parse the raw data to extract structured records
+        parsed_records = parse_dig_records(domain_info.raw_data, domain_info.domain)
         
-        if records:
-            # Create a panel for resolved records
-            records_text = "\n".join([f"[cyan]•[/cyan] [yellow]{record}[/yellow]" for record in records])
-            console.print(Panel(
-                records_text,
-                title="[bold green]Resolved Records[/bold green]",
-                border_style="green",
-                padding=(1, 2)
-            ))
+        if parsed_records:
+            # Create a table for resolved records
+            records_table = Table(title="[bold green]Resolved Records[/bold green]", box=box.ROUNDED)
+            records_table.add_column("Type", style="cyan", width=8)
+            records_table.add_column("Name", style="yellow", width=25)
+            records_table.add_column("Target", style="green", width=40)
+            records_table.add_column("TTL", style="blue", width=8)
+            
+            for record in parsed_records:
+                name = record["name"] if record["name"] else "[dim]N/A[/dim]"
+                ttl = record["ttl"] if record["ttl"] else "[dim]N/A[/dim]"
+                records_table.add_row(
+                    record["type"],
+                    name,
+                    record["target"],
+                    ttl
+                )
+            
+            console.print(records_table)
+        else:
+            # Fallback to simple display if parsing fails
+            records = [line.strip() for line in domain_info.raw_data.strip().split('\n') if line.strip()]
+            if records:
+                records_text = "\n".join([f"[cyan]•[/cyan] [yellow]{record}[/yellow]" for record in records])
+                console.print(Panel(
+                    records_text,
+                    title="[bold green]Resolved Records[/bold green]",
+                    border_style="green",
+                    padding=(1, 2)
+                ))
     
     # Create name servers table (show for non-DIG methods if available)
     if not is_dig and domain_info.name_servers:
