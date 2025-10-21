@@ -52,17 +52,42 @@ class DigClient:
                 # Process results and combine records
                 all_records = []
                 auth_nameservers = []
+                seen_records = set()  # Track seen records to avoid duplicates
                 
                 for result in results:
                     if isinstance(result, Exception):
                         continue
                     rt, output = result
                     if output:
-                        all_records.append(f"=== {rt} Records ===")
-                        all_records.append(output)
+                        # Parse the output to check for CNAME records
+                        lines = output.strip().split('\n')
+                        has_cname = False
+                        cname_target = None
+                        
+                        for line in lines:
+                            line = line.strip()
+                            if line and "CNAME" in line:
+                                has_cname = True
+                                # Extract CNAME target
+                                parts = line.split()
+                                if len(parts) >= 5:
+                                    cname_target = parts[4].rstrip('.')
+                                break
+                        
+                        # If this is a CNAME record, we should only show it once
+                        if has_cname:
+                            record_key = f"CNAME:{line}" if line else f"CNAME:{rt}"
+                            if record_key not in seen_records:
+                                all_records.append(f"=== {rt} Records ===")
+                                all_records.append(output)
+                                seen_records.add(record_key)
+                        else:
+                            # For non-CNAME records, add them normally
+                            all_records.append(f"=== {rt} Records ===")
+                            all_records.append(output)
                         
                         # Extract NS records for authoritative nameservers
-                        if rt == "NS":
+                        if rt == "NS" and not has_cname:
                             auth_nameservers = self._parse_ns_records(output)
                 
                 # Combine all records
@@ -99,11 +124,11 @@ class DigClient:
     def _sync_dig_lookup(self, domain: str, record_type: str) -> str:
         """Synchronous DIG lookup"""
         try:
-            # Build DIG command
+            # Build DIG command - use +noall +answer to get structured output
             if record_type.upper() == "ANY":
-                cmd = ["dig", "+short", "+noall", "+answer", domain]
+                cmd = ["dig", "+noall", "+answer", domain]
             else:
-                cmd = ["dig", "+short", "+noall", "+answer", domain, record_type.upper()]
+                cmd = ["dig", "+noall", "+answer", domain, record_type.upper()]
             
             # Execute DIG command
             result = subprocess.run(
@@ -265,11 +290,31 @@ class DigClient:
     
     def _parse_specific_record(self, line: str, record_type: str) -> Optional[Dict[str, Any]]:
         """Parse specific record type from DIG output"""
-        # For specific record types, DIG usually returns just the value
-        return {
-            "type": record_type.upper(),
-            "value": line.strip()
-        }
+        line = line.strip()
+        if not line:
+            return None
+        
+        # Try to parse structured DNS record format: domain. TTL IN TYPE value
+        parts = line.split()
+        if len(parts) >= 4 and parts[2] == "IN":
+            # Structured format: domain. TTL IN TYPE value
+            domain = parts[0].rstrip('.')
+            ttl = parts[1]
+            record_type_actual = parts[3]
+            value = ' '.join(parts[4:]) if len(parts) > 4 else ""
+            
+            return {
+                "domain": domain,
+                "ttl": ttl,
+                "type": record_type_actual,
+                "value": value
+            }
+        else:
+            # Fallback to simple value format
+            return {
+                "type": record_type.upper(),
+                "value": line
+            }
     
     async def lookup_multiple_types(self, domain: str, record_types: List[str]) -> Dict[str, DomainInfo]:
         """Lookup multiple record types for a domain in parallel"""
